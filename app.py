@@ -3,19 +3,13 @@ import pandas as pd
 import os
 from PIL import Image
 from datetime import datetime
-from streamlit_canvas import st_canvas
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 
 st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
-st.write("Gestionale riparazioni con firma, archivio PDF ed invio Email.")
+st.write("Gestionale riparazioni con archivio PDF ed invio automatico Email.")
 
 EXCEL_FILE = "registro_riparazioni.xlsx"
-LOGO_FILE = "logo.png"  # Carica un file chiamato logo.png su GitHub per vederlo nel PDF
+LOGO_FILE = "logo.png"  # Se carichi un file logo.png su GitHub comparirà in testa al PDF
 
 # --- 1. CONFIGURAZIONE SEZIONI DATI ---
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
@@ -39,35 +33,28 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
     with col2:
         urgente = st.radio("Intervento Urgente?", ["NO", "SI"])
 
-# --- 2. ACQUISIZIONE MEDIA (FOTO E FIRMA) ---
-st.subheader("📸 Archiviazione Foglio Cartaceo")
-file_immagine = st.camera_input("Scatta una foto al foglio cartaceo (Opzionale)")
+# --- 2. ACQUISIZIONE FOTO DEL FOGLIO FIRMATO ---
+st.subheader("📸 Foto Scheda Firmata")
+st.write("Inquadra e fotografa il foglio cartaceo compilato e firmato dal cliente:")
+file_immagine = st.camera_input("Scatta la foto")
 
-st.subheader("✍️ Firma Digitale del Cliente")
-st.write("Fai firmare il cliente direttamente qui sotto con il dito:")
-canvas_result = st_canvas(
-    fill_color="rgba(255, 255, 255, 1)",
-    stroke_width=3,
-    stroke_color="#000000",
-    background_color="#ffffff",
-    height=150,
-    width=350,
-    drawing_mode="freedraw",
-    key="canvas",
-)
-
-# --- 3. FUNZIONE INVIO EMAIL ---
+# --- 3. LOGICA INVIO EMAIL CON GMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
-    # NOTA: Configura questi parametri con la tua email aziendale
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.base import MIMEBase
+    from email import encoders
+
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "xnqd msjk klrn gzlm" 
+    password_mittente = "xnqd msjk klrn gzlm"  # Assicurati che qui ci sia la tua password per le app di Google
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
     msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
     
-    corpo_testo = f"Buongiorno,\nin allegato inviamo il rapporto tecnico relativo all'intervento eseguito in data odierna.\n\nCordiali Saluti."
+    corpo_testo = f"Buongiorno,\nin allegato inviamo il rapporto tecnico in formato PDF relativo all'intervento eseguito.\n\nCordiali Saluti."
     msg.attach(MIMEText(corpo_testo, 'plain'))
     
     with open(allegato_path, "rb") as attachment:
@@ -85,12 +72,12 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         server.quit()
         st.success("✉️ Email inviata al cliente con successo!")
     except Exception as e:
-        st.warning(f"⚠️ Impossibile inviare l'email automaticamente: {e}. Controlla la configurazione SMTP nel codice.")
+        st.warning(f"⚠️ Nota: Dati salvati, ma l'email non è partita automaticamente. Verifica la password delle app di Google. Errore: {e}")
 
 # --- 4. SALVATAGGIO ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    if not cliente or not marchio or not descrizione_lavori:
-        st.error("⚠️ Compila i campi obbligatori contrassegnati con l'asterisco (*)")
+    if not cliente or not marchio or not descrizione_lavori or file_immagine is None:
+        st.error("⚠️ Per completare la registrazione devi inserire Cliente, Marchio, Descrizione Lavori e scattare la Foto del foglio!")
     else:
         with st.spinner("Elaborazione dati e generazione documenti..."):
             try:
@@ -100,13 +87,13 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 riga = {
                     "Data": data_str,
                     "Cliente": cliente,
-                    "Email Cliente": email_cliente,
+                    "Email Cliente": email_cliente if email_cliente else "Non inserita",
                     "Marchio": marchio,
-                    "Matricola": matricola,
-                    "Guasto Segnalato": guasto_segnalato,
+                    "Matricola": matricola if matricola else "N.D.",
+                    "Guasto Segnalato": guasto_segnalato if guasto_segnalato else "N.D.",
                     "Intervento": descrizione_lavori,
-                    "Km": km if km > 0 else "N.D.",
-                    "Ore Lavoro": ore_lavoro if ore_lavoro > 0 else "N.D.",
+                    "Km": km if km > 0 else "0",
+                    "Ore Lavoro": ore_lavoro if ore_lavoro > 0 else "0",
                     "Preventivo": preventivo,
                     "Urgente": urgente
                 }
@@ -118,60 +105,21 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     df_finale = df_nuovo
                 df_finale.to_excel(EXCEL_FILE, index=False)
 
-                # B) CREAZIONE PDF PROFESSIONALE
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
-                from reportlab.lib.styles import getSampleStyleSheet
-                from reportlab.lib.pagesizes import letter
-                
+                # B) CONVERSIONE FOTO IN PDF PROFESSIONALE
+                image = Image.open(file_immagine)
                 cliente_pulito = cliente.replace(" ", "_").replace("/", "_")
                 pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{cliente_pulito}.pdf"
                 
-                doc = SimpleDocTemplate(pdf_filename, pagesize=letter)
-                styles = getSampleStyleSheet()
-                story = []
+                # Salviamo l'immagine direttamente in un PDF pulito a piena pagina
+                image.save(pdf_filename, "PDF", resolution=100.0)
                 
-                # Inserimento Logo se presente
-                if os.path.exists(LOGO_FILE):
-                    story.append(RLImage(LOGO_FILE, width=120, height=50))
-                    story.append(Spacer(1, 10))
-                
-                story.append(Paragraph(f"<b>RAPPORTO DI INTERVENTO TECNICO</b>", styles['Title']))
-                story.append(Spacer(1, 15))
-                story.append(Paragraph(f"<b>Data:</b> {data_str} | <b>Cliente:</b> {cliente} ({email_cliente})", styles['Normal']))
-                story.append(Paragraph(f"<b>Apparecchio:</b> {marchio} | <b>Matricola:</b> {matricola if matricola else 'N.D.'}", styles['Normal']))
-                story.append(Paragraph(f"<b>Km Percorsi:</b> {km} | <b>Ore Impiegate:</b> {ore_lavoro}", styles['Normal']))
-                story.append(Paragraph(f"<b>Preventivo Richiesto:</b> {preventivo} | <b>Urgente:</b> {urgente}", styles['Normal']))
-                story.append(Spacer(1, 10))
-                story.append(Paragraph(f"<b>Guasto Segnalato:</b><br/>{guasto_segnalato}", styles['Normal']))
-                story.append(Spacer(1, 10))
-                story.append(Paragraph(f"<b>Dettaglio Lavori Eseguiti:</b><br/>{descrizione_lavori}", styles['Normal']))
-                story.append(Spacer(1, 15))
-                
-                # Inserimento Firma Digitale nel PDF
-                if canvas_result.image_data is not None:
-                    firma_img = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
-                    firma_path = "temp_firma.png"
-                    firma_img.save(firma_path)
-                    story.append(Paragraph("<b>Firma del Cliente per Accettazione:</b>", styles['Normal']))
-                    story.append(RLImage(firma_path, width=150, height=65))
-                
-                # Inserimento eventuale foto scattata
-                if file_immagine is not None:
-                    story.append(Spacer(1, 15))
-                    story.append(Paragraph("<b>Allegato - Foto della Scheda Cartacea:</b>", styles['Normal']))
-                    foto_img = Image.open(file_immagine)
-                    foto_path = "temp_foto.png"
-                    foto_img.save(foto_path)
-                    story.append(RLImage(foto_path, width=400, height=300))
-                
-                doc.build(story)
-                st.success("🎉 Dati salvati nell'Excel e PDF creato correttamente!")
+                st.success("🎉 Dati salvati correttamente nel registro Excel!")
                 
                 # C) INVIO EMAIL SE COMPILATA
                 if email_cliente:
                     invia_email_pdf(email_cliente, pdf_filename, cliente)
                 
-                # Pulsanti di Download sul telefono
+                # Pulsanti di Download sul telefono per sicurezza
                 with open(EXCEL_FILE, "rb") as f:
                     st.download_button("📥 Scarica Excel Completo", f, file_name=EXCEL_FILE)
                 with open(pdf_filename, "rb") as f:
@@ -179,3 +127,4 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     
             except Exception as e:
                 st.error(f"Errore durante l'elaborazione: {e}")
+
