@@ -179,4 +179,3 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     
             except Exception as e:
                 st.error(f"Errore durante l'elaborazione: {e}")
-
