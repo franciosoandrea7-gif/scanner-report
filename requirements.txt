@@ -1,2 +1,5 @@
 openpyxl
 pandas
+streamlit-canvas
+reportlab
+Pillow
