@@ -59,7 +59,7 @@ canvas_result = st_canvas(
 # --- 3. FUNZIONE INVIO EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     # NOTA: Configura questi parametri con la tua email aziendale
-    email_mittente = "la_tua_email@gmail.com" 
+    email_mittente = "franciosoandrea@gmail.com" 
     password_mittente = "la_tua_password_app_gmail" 
     
     msg = MIMEMultipart()
