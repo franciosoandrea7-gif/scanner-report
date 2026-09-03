@@ -18,14 +18,17 @@ data_corrente = st.date_input("Data Intervento", datetime.now())
 cliente = st.text_input("Ragione Sociale Cliente", placeholder="Es: Porto Taranto Edifici")
 marchio = st.text_input("Marchio Apparecchio", placeholder="Es: Mitsubishi")
 
+# NUOVO CAMPO AGGIUNTO
+descrizione_lavori = st.text_area("Descrizione Intervento / Lavori Svolti", placeholder="Scrivi qui i lavori eseguiti (es. Sostituzione scheda, ricarica gas...)")
+
 # 2. FOTO DELLA SCHEDA CARTACEA
 st.subheader("📸 Archiviazione PDF")
 file_immagine = st.camera_input("Scatta una foto alla scheda firmata")
 
 if file_immagine is not None:
     if st.button("💾 Salva Intervento"):
-        if not cliente or not marchio:
-            st.error("⚠️ Per favore, inserisci il nome del Cliente e il Marchio prima di salvare!")
+        if not cliente or not marchio or not descrizione_lavori:
+            st.error("⚠️ Per favore, compila Cliente, Marchio e Descrizione prima di salvare!")
         else:
             with st.spinner("Salvataggio in corso..."):
                 try:
@@ -36,7 +39,8 @@ if file_immagine is not None:
                     riga = {
                         "Data": data_str,
                         "Ragione Sociale Cliente": cliente,
-                        "Marchio": marchio
+                        "Marchio": marchio,
+                        "Descrizione Lavori": descrizione_lavori  # Salvataggio nel foglio excel
                     }
                     df_nuovo = pd.DataFrame([riga])
                     
