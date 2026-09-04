@@ -3,10 +3,11 @@ import pandas as pd
 import os
 from PIL import Image
 from datetime import datetime
+from streamlit_canvas import st_canvas
 
 st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
-st.write("Gestionale riparazioni con archivio PDF ed invio automatico Email.")
+st.write("Gestionale riparazioni Nova Servimpianti con firma ed invio PDF.")
 
 EXCEL_FILE = "registro_riparazioni.xlsx"
 LOGO_FILE = "logo.png"  
@@ -33,10 +34,22 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
     with col2:
         urgente = st.radio("Intervento Urgente?", ["NO", "SI"])
 
-# --- 2. ACQUISIZIONE FOTO DEL FOGLIO FIRMATO ---
-st.subheader("📸 Foto Scheda Firmata")
-st.write("Inquadra e fotografa il foglio cartaceo compilato e firmato dal cliente:")
-file_immagine = st.camera_input("Scatta la foto")
+# --- 2. ACQUISIZIONE MEDIA (FOTO E FIRMA TOUCH) ---
+st.subheader("📸 Foto Scheda Firmata (Opzionale)")
+file_immagine = st.camera_input("Scatta la foto alla scheda cartacea se presente")
+
+st.subheader("✍️ Firma Digitale del Cliente (Sul display)")
+st.write("Fai firmare il cliente direttamente qui sotto con il dito o un pennino:")
+canvas_result = st_canvas(
+    fill_color="rgba(255, 255, 255, 1)",
+    stroke_width=3,
+    stroke_color="#000000",
+    background_color="#ffffff",
+    height=150,
+    width=400,
+    drawing_mode="freedraw",
+    key="canvas_firma",
+)
 
 # --- 3. LOGICA INVIO EMAIL CON GMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
@@ -47,7 +60,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc  "  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -76,8 +89,8 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
 
 # --- 4. SALVATAGGIO ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    if not cliente or not marchio or not descrizione_lavori or file_immagine is None:
-        st.error("⚠️ Per completare la registrazione devi inserire Cliente, Marchio, Descrizione Lavori e scattare la Foto del foglio!")
+    if not cliente or not marchio or not descrizione_lavori:
+        st.error("⚠️ Per completare la registrazione devi inserire almeno Cliente, Marchio e Descrizione Lavori!")
     else:
         with st.spinner("Elaborazione dati e generazione documenti..."):
             try:
@@ -137,7 +150,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
                 story.append(Spacer(1, 10))
                 
-                # Lista Dati Intervento Lineare pulita ed estesa
+                # Lista Dati Intervento
                 story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style))
                 story.append(Paragraph(f"<b>Ragione Sociale Cliente:</b> {cliente}", body_style))
                 story.append(Paragraph(f"<b>Email Cliente:</b> {email_cliente if email_cliente else 'N.D.'}", body_style))
@@ -154,37 +167,32 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 
                 story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
                 story.append(Paragraph(descrizione_lavori, body_style))
-                story.append(Spacer(1, 25))
+                story.append(Spacer(1, 20))
                 
-                # Spazio Tratteggiato per le Firme cartacee
                 story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
                 story.append(Spacer(1, 10))
-                story.append(Paragraph("<b>Firma del Tecnico:</b> ___________________________", body_style))
-                story.append(Spacer(1, 10))
-                story.append(Paragraph("<b>Firma per Accettazione Cliente:</b> ___________________________", body_style))
-                story.append(Spacer(1, 25))
                 
-                # Immagine Allegata in fondo
-                story.append(Paragraph("<b>■ ALLEGATO - SCHEDA CARTACEA CON FIRMA ORIGINALE</b>", section_heading))
-                story.append(Spacer(1, 10))
+                # SEZIONE FIRME DISTANZIATE
+                story.append(Paragraph("<b>Firma del Tecnico:</b>", body_style))
+                story.append(Spacer(1, 40)) # Spazio vuoto per la firma manuale del tecnico
+                story.append(Paragraph("___________________________", body_style))
                 
-                foto_img = Image.open(file_immagine)
-                foto_path = "temp_allegato.png"
-                foto_img.thumbnail((500, 450))
-                foto_img.save(foto_path)
+                story.append(Spacer(1, 30)) # Grande distacco tra le due firme
                 
-                story.append(RLImage(foto_path, width=450, height=350))
+                story.append(Paragraph("<b>Firma per Accettazione Cliente (Digitale):</b>", body_style))
                 
-                doc.build(story)
-                st.success("🎉 Dati salvati correttamente nel registro Excel!")
+                # Incolla la firma touch nel PDF se il cliente ha firmato
+                if canvas_result.image_data is not None:
+                    import numpy as np
+                    firma_array = canvas_result.image_data.astype('uint8')
+                    # Controlla se il canvas non è completamente vuoto/bianco
+                    if np.any(firma_array[:, :, 3] > 0): 
+                        firma_img = Image.fromarray(firma_array, 'RGBA')
+                        firma_path = "temp_firma.png"
+                        firma_img.save(firma_path)
+                        story.append(Spacer(1, 5))
+                        story.append(RLImage(firma_path, width=150, height=55))
                 
-                if email_cliente:
-                    invia_email_pdf(email_cliente, pdf_filename, cliente)
+                story.append(Paragraph("___________________________", body_style))
+                story.append(Spacer(1, 35))
                 
-                with open(EXCEL_FILE, "rb") as f:
-                    st.download_button("📥 Scarica Excel Completo", f, file_name=EXCEL_FILE)
-                with open(pdf_filename, "rb") as f:
-                    st.download_button("📥 Scarica PDF Report", f, file_name=pdf_filename)
-                    
-            except Exception as e:
-                st.error(f"Errore durante l'elaborazione del PDF: {e}")
