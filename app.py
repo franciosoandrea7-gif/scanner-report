@@ -47,7 +47,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc                       "  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- INSERISCI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -95,7 +95,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     "Km": km if km > 0 else "0",
                     "Ore Lavoro": ore_lavoro if ore_lavoro > 0 else "0",
                     "Preventivo": preventivo,
-                    "Urgente": urgent
+                    "Urgente": urgente
                 }
                 df_nuovo = pd.DataFrame([riga])
                 if os.path.exists(EXCEL_FILE):
