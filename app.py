@@ -65,7 +65,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         msg.attach(part)
         
     try:
-        server = smtplib.SMTP("://gmail.com", 587)
+       server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg.as_string())
