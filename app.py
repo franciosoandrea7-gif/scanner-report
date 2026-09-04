@@ -47,7 +47,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI SEMPRE LA TUA PASSWORD QUI
+    password_mittente = "qiad bvqq ijaj mutc                       "  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -95,7 +95,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     "Km": km if km > 0 else "0",
                     "Ore Lavoro": ore_lavoro if ore_lavoro > 0 else "0",
                     "Preventivo": preventivo,
-                    "Urgente": urgente
+                    "Urgente": urgent
                 }
                 df_nuovo = pd.DataFrame([riga])
                 if os.path.exists(EXCEL_FILE):
@@ -114,50 +114,28 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 cliente_pulito = cliente.replace(" ", "_").replace("/", "_")
                 pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{cliente_pulito}.pdf"
                 
-                # Impostiamo margini più stretti per dare spazio
                 doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
                 styles = getSampleStyleSheet()
                 
-                # Stili Personalizzati Avanzati
                 title_style = ParagraphStyle(
-                    'NewTitle',
-                    parent=styles['Heading1'],
-                    fontSize=18,
-                    leading=22,
-                    textColor=colors.HexColor("#1A365D"),
-                    alignment=1, # Centrato
-                    spaceAfter=15
+                    'NewTitle', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=15
                 )
-                
                 section_heading = ParagraphStyle(
-                    'SectionHeading',
-                    parent=styles['Heading3'],
-                    fontSize=12,
-                    leading=16,
-                    textColor=colors.HexColor("#2C5282"),
-                    spaceBefore=12,
-                    spaceAfter=6
+                    'SectionHeading', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=12, spaceAfter=6
                 )
-                
                 body_style = ParagraphStyle(
-                    'NewBody',
-                    parent=styles['Normal'],
-                    fontSize=10,
-                    leading=14
+                    'NewBody', parent=styles['Normal'], fontSize=10, leading=14
                 )
                 
                 story = []
                 
-                # 1. Logo in evidenza per lungo in testa
                 if os.path.exists(LOGO_FILE):
-                    # Allarghiamo il logo proporzionato per lungo
                     story.append(RLImage(LOGO_FILE, width=540, height=75))
                     story.append(Spacer(1, 15))
                 
                 story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
                 story.append(Spacer(1, 5))
                 
-                # 2. Creazione della Tabella Dati Ordinata con griglia
                 dati_tabella = [
                     [Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style), Paragraph(f"<b>Cliente:</b> {cliente}", body_style)],
                     [Paragraph(f"<b>Email Cliente:</b> {email_cliente if email_cliente else 'N.D.'}", body_style), Paragraph(f"<b>Apparecchio / Marchio:</b> {marchio}", body_style)],
@@ -173,12 +151,11 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#E2E8F0")),
                     ('TOPPADDING', (0,0), (-1,-1), 6),
                     ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-                    ('SPAN', (0,4), (1,4)), # Unisce l'ultima riga
+                    ('SPAN', (0,4), (1,4)),
                 ]))
                 story.append(t)
                 story.append(Spacer(1, 15))
                 
-                # 3. Sezioni del Guasto e Intervento distanziate
                 story.append(Paragraph("■ GUASTO SEGNALATO", section_heading))
                 story.append(Paragraph(guasto_segnalato if guasto_segnalato else "Nessuna segnalazione inserita.", body_style))
                 story.append(Spacer(1, 10))
@@ -187,7 +164,6 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 story.append(Paragraph(descrizione_lavori, body_style))
                 story.append(Spacer(1, 20))
                 
-                # 4. Predisposizione Zona Firma
                 story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
                 story.append(Spacer(1, 5))
                 
@@ -200,3 +176,21 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     ('ALIGN', (0,0), (-1,-1), 'CENTER'),
                     ('BOTTOMPADDING', (0,1), (-1,1), 20)
                 ]))
+                story.append(tf)
+                story.append(Spacer(1, 25))
+                
+                story.append(Paragraph("■ ALLEGATO - SCHEDA CARTACEA DIGITALE", section_heading))
+                story.append(Spacer(1, 5))
+                
+                foto_img = Image.open(file_immagine)
+                foto_path = "temp_allegato.png"
+                foto_img.thumbnail((500, 450))
+                foto_img.save(foto_path)
+                
+                story.append(RLImage(foto_path))
+                
+                doc.build(story)
+                st.success("🎉 Dati salvati correttamente nel registro Excel e PDF migliorato con successo!")
+                
+                if email_cliente:
+                    invia_email_pdf(email_cliente, pdf_filename, cliente)
