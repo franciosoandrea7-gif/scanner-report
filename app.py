@@ -47,7 +47,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc  "  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -105,8 +105,8 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     df_finale = df_nuovo
                 df_finale.to_excel(EXCEL_FILE, index=False)
 
-                # B) CREAZIONE PDF PROFESSIONALE GRAFICO
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+                # B) CREAZIONE PDF PROFESSIONALE LINEARE
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
                 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
                 from reportlab.lib import colors
                 from reportlab.lib.pagesizes import letter
@@ -114,83 +114,77 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 cliente_pulito = cliente.replace(" ", "_").replace("/", "_")
                 pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{cliente_pulito}.pdf"
                 
-                doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
+                doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
                 styles = getSampleStyleSheet()
                 
                 title_style = ParagraphStyle(
-                    'NewTitle', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=15
+                    'NewTitle', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20
                 )
                 section_heading = ParagraphStyle(
-                    'SectionHeading', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=12, spaceAfter=6
+                    'SectionHeading', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6
                 )
                 body_style = ParagraphStyle(
-                    'NewBody', parent=styles['Normal'], fontSize=10, leading=14
+                    'NewBody', parent=styles['Normal'], fontSize=10, leading=16
                 )
                 
                 story = []
                 
+                # Intestazione con Logo per lungo
                 if os.path.exists(LOGO_FILE):
-                    story.append(RLImage(LOGO_FILE, width=540, height=75))
+                    story.append(RLImage(LOGO_FILE, width=530, height=75))
                     story.append(Spacer(1, 15))
                 
                 story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
-                story.append(Spacer(1, 5))
+                story.append(Spacer(1, 10))
                 
-                dati_tabella = [
-                    [Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style), Paragraph(f"<b>Cliente:</b> {cliente}", body_style)],
-                    [Paragraph(f"<b>Email Cliente:</b> {email_cliente if email_cliente else 'N.D.'}", body_style), Paragraph(f"<b>Apparecchio / Marchio:</b> {marchio}", body_style)],
-                    [Paragraph(f"<b>Matricola:</b> {matricola if matricola else 'N.D.'}", body_style), Paragraph(f"<b>Kilometri Percorsi:</b> {km} Km", body_style)],
-                    [Paragraph(f"<b>Ore Impiegate:</b> {ore_lavoro} ore", body_style), Paragraph(f"<b>Richiesta Preventivo:</b> {preventivo}", body_style)],
-                    [Paragraph(f"<b>Intervento Urgente:</b> {urgente}", body_style), ""]
-                ]
-                
-                t = Table(dati_tabella, colWidths=[270, 270])
-                t.setStyle(TableStyle([
-                    ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F7FAFC")),
-                    ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#E2E8F0")),
-                    ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#E2E8F0")),
-                    ('TOPPADDING', (0,0), (-1,-1), 6),
-                    ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-                    ('SPAN', (0,4), (1,4)),
-                ]))
-                story.append(t)
+                # Lista Dati Intervento Lineare pulita ed estesa
+                story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style))
+                story.append(Paragraph(f"<b>Ragione Sociale Cliente:</b> {cliente}", body_style))
+                story.append(Paragraph(f"<b>Email Cliente:</b> {email_cliente if email_cliente else 'N.D.'}", body_style))
+                story.append(Paragraph(f"<b>Apparecchio / Marchio:</b> {marchio}", body_style))
+                story.append(Paragraph(f"<b>Matricola:</b> {matricola if matricola else 'N.D.'}", body_style))
+                story.append(Paragraph(f"<b>Kilometri Percorsi:</b> {km} Km", body_style))
+                story.append(Paragraph(f"<b>Ore Impiegate:</b> {ore_lavoro} ore", body_style))
+                story.append(Paragraph(f"<b>Richiesta Preventivo:</b> {preventivo} | <b>Intervento Urgente:</b> {urgente}", body_style))
                 story.append(Spacer(1, 15))
                 
-                story.append(Paragraph("■ GUASTO SEGNALATO", section_heading))
+                story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
                 story.append(Paragraph(guasto_segnalato if guasto_segnalato else "Nessuna segnalazione inserita.", body_style))
                 story.append(Spacer(1, 10))
                 
-                story.append(Paragraph("■ DETTAGLIO LAVORI ESEGUITI", section_heading))
+                story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
                 story.append(Paragraph(descrizione_lavori, body_style))
-                story.append(Spacer(1, 20))
-                
-                story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
-                story.append(Spacer(1, 5))
-                
-                tabella_firma = [
-                    [Paragraph("<b>Firma del Tecnico:</b>", body_style), Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style)],
-                    ["\n\n___________________________", "\n\n___________________________"]
-                ]
-                tf = Table(tabella_firma, colWidths=[270, 270])
-                tf.setStyle(TableStyle([
-                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-                    ('BOTTOMPADDING', (0,1), (-1,1), 20)
-                ]))
-                story.append(tf)
                 story.append(Spacer(1, 25))
                 
-                story.append(Paragraph("■ ALLEGATO - SCHEDA CARTACEA DIGITALE", section_heading))
-                story.append(Spacer(1, 5))
+                # Spazio Tratteggiato per le Firme cartacee
+                story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
+                story.append(Spacer(1, 10))
+                story.append(Paragraph("<b>Firma del Tecnico:</b> ___________________________", body_style))
+                story.append(Spacer(1, 10))
+                story.append(Paragraph("<b>Firma per Accettazione Cliente:</b> ___________________________", body_style))
+                story.append(Spacer(1, 25))
+                
+                # Immagine Allegata in fondo
+                story.append(Paragraph("<b>■ ALLEGATO - SCHEDA CARTACEA CON FIRMA ORIGINALE</b>", section_heading))
+                story.append(Spacer(1, 10))
                 
                 foto_img = Image.open(file_immagine)
                 foto_path = "temp_allegato.png"
                 foto_img.thumbnail((500, 450))
                 foto_img.save(foto_path)
                 
-                story.append(RLImage(foto_path))
+                story.append(RLImage(foto_path, width=450, height=350))
                 
                 doc.build(story)
-                st.success("🎉 Dati salvati correttamente nel registro Excel e PDF migliorato con successo!")
+                st.success("🎉 Dati salvati correttamente nel registro Excel!")
                 
                 if email_cliente:
                     invia_email_pdf(email_cliente, pdf_filename, cliente)
+                
+                with open(EXCEL_FILE, "rb") as f:
+                    st.download_button("📥 Scarica Excel Completo", f, file_name=EXCEL_FILE)
+                with open(pdf_filename, "rb") as f:
+                    st.download_button("📥 Scarica PDF Report", f, file_name=pdf_filename)
+                    
+            except Exception as e:
+                st.error(f"Errore durante l'elaborazione del PDF: {e}")
