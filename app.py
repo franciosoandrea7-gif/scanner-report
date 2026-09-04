@@ -9,7 +9,7 @@ st.title("🛠️ Nova Report Pro")
 st.write("Gestionale riparazioni con archivio PDF ed invio automatico Email.")
 
 EXCEL_FILE = "registro_riparazioni.xlsx"
-LOGO_FILE = "logo.png"  # Se carichi un file logo.png su GitHub comparirà in testa al PDF
+LOGO_FILE = "logo.png"  
 
 # --- 1. CONFIGURAZIONE SEZIONI DATI ---
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
@@ -29,7 +29,7 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
     
     col1, col2 = st.columns(2)
     with col1:
-        preventivo = st.radio("Richiede Preventivo?", ["NO", "SI"])
+        preventivo = st.radio("Richiega Preventivo?", ["NO", "SI"])
     with col2:
         urgente = st.radio("Intervento Urgente?", ["NO", "SI"])
 
@@ -47,12 +47,12 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # Assicurati che qui ci sia la tua password per le app di Google
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
-    msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
+    msg['Subject'] = f"Rapporto Intervento Técnico - {nome_cliente}"
     
     corpo_testo = f"Buongiorno,\nin allegato inviamo il rapporto tecnico in formato PDF relativo all'intervento eseguito.\n\nCordiali Saluti."
     msg.attach(MIMEText(corpo_testo, 'plain'))
@@ -72,7 +72,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         server.quit()
         st.success("✉️ Email inviata al cliente con successo!")
     except Exception as e:
-        st.warning(f"⚠️ Nota: Dati salvati, ma l'email non è partita automaticamente. Verifica la password delle app di Google. Errore: {e}")
+        st.warning(f"⚠️ Nota: Dati salvati, ma l'email non è partita automaticamente. Errore: {e}")
 
 # --- 4. SALVATAGGIO ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
@@ -105,15 +105,56 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     df_finale = df_nuovo
                 df_finale.to_excel(EXCEL_FILE, index=False)
 
-                # B) CONVERSIONE FOTO IN PDF PROFESSIONALE
-                image = Image.open(file_immagine)
+                # B) CREAZIONE PDF PROFESSIONALE TESTUALE CON ALLEGATO
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+                from reportlab.lib.styles import getSampleStyleSheet
+                from reportlab.lib.pagesizes import letter
+                
                 cliente_pulito = cliente.replace(" ", "_").replace("/", "_")
                 pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{cliente_pulito}.pdf"
                 
-                # Salviamo l'immagine direttamente in un PDF pulito a piena pagina
-                image.save(pdf_filename, "PDF", resolution=100.0)
+                doc = SimpleDocTemplate(pdf_filename, pagesize=letter)
+                styles = getSampleStyleSheet()
+                story = []
                 
-                st.success("🎉 Dati salvati correttamente nel registro Excel!")
+                # Inserimento Logo Aziendale in testa se caricato su GitHub
+                if os.path.exists(LOGO_FILE):
+                    story.append(RLImage(LOGO_FILE, width=130, height=50))
+                    story.append(Spacer(1, 15))
+                
+                story.append(Paragraph(f"<b>RAPPORTO DI INTERVENTO TECNICO</b>", styles['Title']))
+                story.append(Spacer(1, 20))
+                
+                # Tabella testuale riassuntiva dei dati inseriti
+                story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}", styles['Normal']))
+                story.append(Paragraph(f"<b>Ragione Sociale Cliente:</b> {cliente} (Email: {email_cliente if email_cliente else 'N.D.'})", styles['Normal']))
+                story.append(Paragraph(f"<b>Apparecchio / Marchio:</b> {marchio} | <b>Matricola:</b> {matricola if matricola else 'N.D.'}", styles['Normal']))
+                story.append(Paragraph(f"<b>Kilometri Percorsi:</b> {km} Km | <b>Ore Impiegate:</b> {ore_lavoro} ore", styles['Normal']))
+                story.append(Paragraph(f"<b>Richiesta Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", styles['Normal']))
+                story.append(Spacer(1, 15))
+                
+                story.append(Paragraph(f"<b>⚠️ GUASTO SEGNALATO:</b>", styles['Heading3']))
+                story.append(Paragraph(guasto_segnalato if guasto_segnalato else "Nessuna segnalazione inserita.", styles['Normal']))
+                story.append(Spacer(1, 15))
+                
+                story.append(Paragraph(f"<b>🔧 DETTAGLIO LAVORI ESEGUITI:</b>", styles['Heading3']))
+                story.append(Paragraph(descrizione_lavori, styles['Normal']))
+                story.append(Spacer(1, 25))
+                
+                # Inserimento della foto scattata come allegato nella seconda pagina
+                story.append(Paragraph("<b>📸 ALLEGATO - SCHEDA CARTACEA CON FIRMA ORIGINALE:</b>", styles['Heading3']))
+                story.append(Spacer(1, 10))
+                
+                foto_img = Image.open(file_immagine)
+                foto_path = "temp_allegato.png"
+                # Ridimensioniamo la foto per farla entrare perfettamente nel foglio A4 del PDF
+                foto_img.thumbnail((450, 550))
+                foto_img.save(foto_path)
+                
+                story.append(RLImage(foto_path))
+                
+                doc.build(story)
+                st.success("🎉 Dati salvati correttamente nel registro Excel e PDF impaginato!")
                 
                 # C) INVIO EMAIL SE COMPILATA
                 if email_cliente:
@@ -126,4 +167,4 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     st.download_button("📥 Scarica PDF Report", f, file_name=pdf_filename)
                     
             except Exception as e:
-                st.error(f"Errore durante l'elaborazione: {e}")
+                st.error(f"Errore durante l'elaborazione del PDF: {e}")
