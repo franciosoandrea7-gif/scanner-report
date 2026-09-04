@@ -47,7 +47,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # <--- INSERISCI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -144,6 +144,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     [Paragraph(f"<b>Intervento Urgente:</b> {urgente}", body_style), ""]
                 ]
                 
+                # Assegniamo larghezze precise alle due colonne (270 pixel ciascuna per fare 540 in totale)
                 t = Table(dati_tabella, colWidths=[270, 270])
                 t.setStyle(TableStyle([
                     ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F7FAFC")),
@@ -171,6 +172,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     [Paragraph("<b>Firma del Tecnico:</b>", body_style), Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style)],
                     ["\n\n___________________________", "\n\n___________________________"]
                 ]
+                # Assegniamo larghezze precise anche alle colonne delle firme
                 tf = Table(tabella_firma, colWidths=[270, 270])
                 tf.setStyle(TableStyle([
                     ('ALIGN', (0,0), (-1,-1), 'CENTER'),
@@ -190,7 +192,3 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 story.append(RLImage(foto_path))
                 
                 doc.build(story)
-                st.success("🎉 Dati salvati correttamente nel registro Excel e PDF migliorato con successo!")
-                
-                if email_cliente:
-                    invia_email_pdf(email_cliente, pdf_filename, cliente)
