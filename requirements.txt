@@ -2,3 +2,4 @@ openpyxl
 pandas
 Pillow
 reportlab
+streamlit-canvas==0.9.0
