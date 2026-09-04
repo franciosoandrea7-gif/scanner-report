@@ -3,7 +3,6 @@ import pandas as pd
 import os
 from PIL import Image
 from datetime import datetime
-from streamlit_canvas import st_canvas
 
 st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
@@ -34,22 +33,13 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
     with col2:
         urgente = st.radio("Intervento Urgente?", ["NO", "SI"])
 
-# --- 2. ACQUISIZIONE MEDIA (FOTO E FIRMA TOUCH) ---
+# --- 2. ACQUISIZIONE MEDIA (FOTO E COPIA FIRMA DIGITALE) ---
 st.subheader("📸 Foto Scheda Firmata (Opzionale)")
 file_immagine = st.camera_input("Scatta la foto alla scheda cartacea se presente")
 
-st.subheader("✍️ Firma Digitale del Cliente (Sul display)")
-st.write("Fai firmare il cliente direttamente qui sotto con il dito o un pennino:")
-canvas_result = st_canvas(
-    fill_color="rgba(255, 255, 255, 1)",
-    stroke_width=3,
-    stroke_color="#000000",
-    background_color="#ffffff",
-    height=150,
-    width=400,
-    drawing_mode="freedraw",
-    key="canvas_firma",
-)
+st.subheader("✍️ Firma Digitale del Cliente")
+st.write("Clicca sotto per far firmare il cliente con il dito sul display dell'iPad/Telefono:")
+file_firma = st.file_uploader("Carica o disegna la firma del cliente", type=["png", "jpg", "jpeg"])
 
 # --- 3. LOGICA INVIO EMAIL CON GMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
@@ -60,7 +50,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -172,27 +162,32 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
                 story.append(Spacer(1, 10))
                 
-                # SEZIONE FIRME DISTANZIATE
+                # SEZIONE FIRME DISTANZIATE E CORRETTE
                 story.append(Paragraph("<b>Firma del Tecnico:</b>", body_style))
-                story.append(Spacer(1, 40)) # Spazio vuoto per la firma manuale del tecnico
+                story.append(Spacer(1, 35)) 
                 story.append(Paragraph("___________________________", body_style))
                 
-                story.append(Spacer(1, 30)) # Grande distacco tra le due firme
+                story.append(Spacer(1, 45)) # AMPIO SPAZIO TRA LE DUE FIRME
                 
-                story.append(Paragraph("<b>Firma per Accettazione Cliente (Digitale):</b>", body_style))
+                story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
                 
-                # Incolla la firma touch nel PDF se il cliente ha firmato
-                if canvas_result.image_data is not None:
-                    import numpy as np
-                    firma_array = canvas_result.image_data.astype('uint8')
-                    # Controlla se il canvas non è completamente vuoto/bianco
-                    if np.any(firma_array[:, :, 3] > 0): 
-                        firma_img = Image.fromarray(firma_array, 'RGBA')
-                        firma_path = "temp_firma.png"
-                        firma_img.save(firma_path)
-                        story.append(Spacer(1, 5))
-                        story.append(RLImage(firma_path, width=150, height=55))
+                # Se il cliente ha inserito la firma digitale la incolla qui nel PDF
+                if file_firma is not None:
+                    firma_img = Image.open(file_firma)
+                    firma_path = "temp_firma_digital.png"
+                    firma_img.thumbnail((150, 60))
+                    firma_img.save(firma_path)
+                    story.append(Spacer(1, 5))
+                    story.append(RLImage(firma_path))
                 
                 story.append(Paragraph("___________________________", body_style))
                 story.append(Spacer(1, 35))
                 
+                # Immagine Allegata in seconda pagina (se presente)
+                if file_immagine is not None:
+                    story.append(Paragraph("<b>■ ALLEGATO - SCHEDA CARTACEA CON FIRMA ORIGINALE</b>", section_heading))
+                    story.append(Spacer(1, 10))
+                    foto_img = Image.open(file_immagine)
+                    foto_path = "temp_allegato.png"
+                    foto_img.thumbnail((500, 450))
+                    foto_img.save(foto_path)
