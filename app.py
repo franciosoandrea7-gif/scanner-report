@@ -47,7 +47,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "la-tua-password-di-16-lettere-di-google"  # Assicurati che qui ci sia la tua password per le app di Google
+    password_mittente = "qiad bvqq ijaj mutc"  # Assicurati che qui ci sia la tua password per le app di Google
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
