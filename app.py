@@ -11,7 +11,7 @@ st.write("Gestionale riparazioni Nova Servimpianti con firma ed invio PDF.")
 EXCEL_FILE = "registro_riparazioni.xlsx"
 LOGO_FILE = "logo.png"  
 
-# --- 1. CONFIGURAZIONE SEZIONI DATI ---
+# --- SEZIONE 1: MODULO DI INPUT DATI ---
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
     data_corrente = st.date_input("Data Intervento", datetime.now())
     cliente = st.text_input("Ragione Sociale Cliente *")
@@ -26,14 +26,12 @@ with st.expander("📝 Stato della Riparazione", expanded=True):
 with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
     km = st.number_input("Kilometri percorsi (Km)", min_value=0, value=0, step=1)
     ore_lavoro = st.number_input("Ore di lavoro impiegate", min_value=0.0, value=0.0, step=0.5)
-    
     col1, col2 = st.columns(2)
     with col1:
         preventivo = st.radio("Richiega Preventivo?", ["NO", "SI"])
     with col2:
         urgente = st.radio("Intervento Urgente?", ["NO", "SI"])
 
-# --- 2. ACQUISIZIONE MEDIA (FOTO E COPIA FIRMA DIGITALE) ---
 st.subheader("📸 Foto Scheda Firmata (Opzionale)")
 file_immagine = st.camera_input("Scatta la foto alla scheda cartacea se presente")
 
@@ -41,7 +39,7 @@ st.subheader("✍️ Firma Digitale del Cliente")
 st.write("Usa lo strumento dell'iPad/Telefono per far firmare il cliente sul display:")
 file_firma = st.file_uploader("Carica o disegna la firma del cliente", type=["png", "jpg", "jpeg"])
 
-# --- 3. LOGICA INVIO EMAIL CON GMAIL ---
+# --- SEZIONE 2: FUNZIONE INVIO EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     import smtplib
     from email.mime.multipart import MIMEMultipart
@@ -50,24 +48,22 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # <--- INSERISCI QUI LA TUA PASSWORD DI GOOGLE!
+    password_mittente = "qiad bvqq ijaj mutc "  # <--- INSERISCI LA TUA PASSWORD QUI
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
     msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
+    msg.attach(MIMEText("Buongiorno,\nin allegato inviamo il rapporto tecnico in formato PDF.\n\nCordiali Saluti.", 'plain'))
     
-    corpo_testo = f"Buongiorno,\nin allegato inviamo il rapporto tecnico in formato PDF relativo all'intervento eseguito.\n\nCordiali Saluti."
-    msg.attach(MIMEText(corpo_testo, 'plain'))
-    
-    with open(allegato_path, "rb") as attachment:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(attachment.read())
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
-        msg.attach(part)
-        
     try:
+        with open(allegato_path, "rb") as attachment:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment.read())
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
+            msg.attach(part)
+            
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
@@ -77,7 +73,77 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     except Exception as e:
         st.warning(f"⚠️ Nota: Dati salvati, ma l'email non è partita. Errore: {e}")
 
-# --- 4. SALVATAGGIO ---
+# --- SEZIONE 3: FUNZIONE CREAZIONE PDF ---
+def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_firma, file_immagine):
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+
+    doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle('NewTitle', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
+    section_heading = ParagraphStyle('SectionHeading', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
+    body_style = ParagraphStyle('NewBody', parent=styles['Normal'], fontSize=10, leading=16)
+    
+    story = []
+    if os.path.exists(LOGO_FILE):
+        story.append(RLImage(LOGO_FILE, width=530, height=75))
+        story.append(Spacer(1, 15))
+    
+    story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
+    story.append(Spacer(1, 10))
+    story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style))
+    story.append(Paragraph(f"<b>Ragione Sociale Cliente:</b> {cliente}", body_style))
+    story.append(Paragraph(f"<b>Email Cliente:</b> {email_cliente if email_cliente else 'N.D.'}", body_style))
+    story.append(Paragraph(f"<b>Apparecchio / Marchio:</b> {marchio}", body_style))
+    story.append(Paragraph(f"<b>Matricola:</b> {matricola if matricola else 'N.D.'}", body_style))
+    story.append(Paragraph(f"<b>Kilometri Percorsi:</b> {km} Km", body_style))
+    story.append(Paragraph(f"<b>Ore Impiegate:</b> {ore_lavoro} ore", body_style))
+    story.append(Paragraph(f"<b>Richiesta Preventivo:</b> {preventivo} | <b>Intervento Urgente:</b> {urgente}", body_style))
+    
+    story.append(Spacer(1, 15))
+    story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
+    story.append(Paragraph(guasto_segnalato if guasto_segnalato else "Nessuna segnalazione inserita.", body_style))
+    
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
+    story.append(Paragraph(descrizione_lavori, body_style))
+    
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("<b>Firma del Tecnico:</b>", body_style))
+    story.append(Spacer(1, 40)) 
+    story.append(Paragraph("___________________________", body_style))
+    
+    story.append(Spacer(1, 50)) # AMPIO STACCO TRA LE DUE FIRME
+    story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
+    
+    if file_firma is not None:
+        firma_img = Image.open(file_firma)
+        firma_path = "temp_firma_digital.png"
+        firma_img.thumbnail((150, 60))
+        firma_img.save(firma_path)
+        story.append(Spacer(1, 5))
+        story.append(RLImage(firma_path))
+    
+    story.append(Paragraph("___________________________", body_style))
+    story.append(Spacer(1, 25))
+    
+    if file_immagine is not None:
+        story.append(Paragraph("<b>■ ALLEGATO - SCHEDA CARTACEA CON FIRMA ORIGINALE</b>", section_heading))
+        story.append(Spacer(1, 10))
+        foto_img = Image.open(file_immagine)
+        foto_path = "temp_allegato.png"
+        foto_img.thumbnail((500, 450))
+        foto_img.save(foto_path)
+        story.append(RLImage(foto_path, width=450, height=350))
+        
+    doc.build(story)
+
+# --- SEZIONE 4: LOGICA DI SALVATAGGIO GENERALE ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori:
         st.error("⚠️ Inserisci almeno Cliente, Marchio e Descrizione Lavori!")
@@ -86,7 +152,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
             try:
                 data_str = data_corrente.strftime("%d/%m/%Y")
                 
-                # A) REGISTRAZIONE EXCEL
+                # A) SALVATAGGIO IN EXCEL
                 riga = {
                     "Data": data_str, "Cliente": cliente, "Email Cliente": email_cliente if email_cliente else "N.D.",
                     "Marchio": marchio, "Matricola": matricola if matricola else "N.D.",
@@ -102,88 +168,21 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     df_finale = df_nuovo
                 df_finale.to_excel(EXCEL_FILE, index=False)
 
-                # B) GENERAZIONE PDF PROFESSIONALE LINEARE
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
-                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-                from reportlab.lib import colors
-                from reportlab.lib.pagesizes import letter
-                
+                # B) CHIAMATA CREAZIONE PDF
                 cliente_pulito = cliente.replace(" ", "_").replace("/", "_")
                 pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{cliente_pulito}.pdf"
                 
-                doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
-                styles = getSampleStyleSheet()
-                
-                title_style = ParagraphStyle('NewTitle', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
-                section_heading = ParagraphStyle('SectionHeading', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
-                body_style = ParagraphStyle('NewBody', parent=styles['Normal'], fontSize=10, leading=16)
-                
-                story = []
-                
-                if os.path.exists(LOGO_FILE):
-                    story.append(RLImage(LOGO_FILE, width=530, height=75))
-                    story.append(Spacer(1, 15))
-                
-                story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
-                story.append(Spacer(1, 10))
-                
-                story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style))
-                story.append(Paragraph(f"<b>Ragione Sociale Cliente:</b> {cliente}", body_style))
-                st_mail = email_cliente if email_cliente else 'N.D.'
-                story.append(Paragraph(f"<b>Email Cliente:</b> {st_mail}", body_style))
-                story.append(Paragraph(f"<b>Apparecchio / Marchio:</b> {marchio}", body_style))
-                st_matr = matricola if matricola else 'N.D.'
-                story.append(Paragraph(f"<b>Matricola:</b> {st_matr}", body_style))
-                story.append(Paragraph(f"<b>Kilometri Percorsi:</b> {km} Km", body_style))
-                story.append(Paragraph(f"<b>Ore Impiegate:</b> {ore_lavoro} ore", body_style))
-                story.append(Paragraph(f"<b>Richiesta Preventivo:</b> {preventivo} | <b>Intervento Urgente:</b> {urgente}", body_style))
-                story.append(Spacer(1, 15))
-                
-                story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
-                story.append(Paragraph(guasto_segnalato if guasto_segnalato else "Nessuna segnalazione inserita.", body_style))
-                story.append(Spacer(1, 10))
-                
-                story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
-                story.append(Paragraph(descrizione_lavori, body_style))
-                story.append(Spacer(1, 20))
-                
-                story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
-                story.append(Spacer(1, 10))
-                
-                # SEZIONE FIRME DISTANZIATE E COERENTI
-                story.append(Paragraph("<b>Firma del Tecnico:</b>", body_style))
-                story.append(Spacer(1, 40)) 
-                story.append(Paragraph("___________________________", body_style))
-                
-                story.append(Spacer(1, 50)) # MASSIMO STACCO COMODO
-                
-                story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
-                
-                if file_firma is not None:
-                    firma_img = Image.open(file_firma)
-                    firma_path = "temp_firma_digital.png"
-                    firma_img.thumbnail((150, 60))
-                    firma_img.save(firma_path)
-                    story.append(Spacer(1, 5))
-                    story.append(RLImage(firma_path))
-                
-                story.append(Paragraph("___________________________", body_style))
-                story.append(Spacer(1, 25))
-                
-                if file_immagine is not None:
-                    story.append(Paragraph("<b>■ ALLEGATO - SCHEDA CARTACEA CON FIRMA ORIGINALE</b>", section_heading))
-                    story.append(Spacer(1, 10))
-                    foto_img = Image.open(file_immagine)
-                    foto_path = "temp_allegato.png"
-                    foto_img.thumbnail((500, 450))
-                    foto_img.save(foto_path)
-                    story.append(RLImage(foto_path, width=450, height=350))
-                
-                doc.build(story)
+                elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_firma, file_immagine)
                 st.success("🎉 Dati registrati in Excel e PDF generato correttamente!")
                 
                 if email_cliente:
                     invia_email_pdf(email_cliente, pdf_filename, cliente)
-                
+                    
+                # C) PULSANTI DOWNLOAD DI SICUREZZA
                 with open(EXCEL_FILE, "rb") as f:
                     st.download_button("📥 Scarica Excel Completo", f, file_name=EXCEL_FILE)
+                with open(pdf_filename, "rb") as f:
+                    st.download_button("📥 Scarica PDF Report", f, file_name=pdf_filename)
+                    
+            except Exception as e:
+                st.error(f"Errore generale: {e}")
