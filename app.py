@@ -47,7 +47,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "xnqd msjk klrn gzlm"  # Assicurati che qui ci sia la tua password per le app di Google
+    password_mittente = "la-tua-password-di-16-lettere-di-google"  # Assicurati che qui ci sia la tua password per le app di Google
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -65,7 +65,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         msg.attach(part)
         
     try:
-       server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg.as_string())
@@ -127,4 +127,3 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     
             except Exception as e:
                 st.error(f"Errore durante l'elaborazione: {e}")
-
