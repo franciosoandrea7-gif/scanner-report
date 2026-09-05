@@ -85,15 +85,11 @@ if st.session_state["codice_sms"] is not None:
         if st.button("✅ VALIDA CODICE SMS"):
             if codice_inserito == st.session_state["codice_sms"]:
                 st.session_state["sms_validato"] = True
-                st.success("🔒 Documento Firmato e Convalidato con Successo!")
-                st.rerun()
+                st.success("🔒 Documento Firmato e Convalidato con Successo! Adesso clicca sul pulsante blu in fondo per completare il salvataggio.")
             else:
                 st.error("❌ Codice errato! Riprova.")
     else:
         st.success(f"🔒 Documento già Convalidato! (Codice: {st.session_state['codice_sms']})")
-
-if st.session_state["sms_validato"]:
-    st.info("ℹ️ Stato firma: OK. Ora puoi procedere al salvataggio finale del report in fondo alla pagina.")
 
 # --- 4. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
@@ -179,7 +175,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     except Exception as e:
         st.error(f"Errore generazione PDF: {e}")
 
-# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI (BLINDATA) ---
+# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI ---
 def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
     riga = {
         "Data": data_str,
@@ -196,3 +192,4 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         "Urgente": urgente,
         "Firma": stringa_firma
     }
+    if os.path.exists(EXCEL_FILE):
