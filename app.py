@@ -81,30 +81,70 @@ if tasto_registra:
     elif not st.session_state["sms_validato"]:
         st.error("⚠️ Il cliente deve prima convalidare il codice SMS!")
     else:
-        with st.spinner("Registrazione in corso e invio email..."):
+        with st.spinner("Registrazione in corso e invio email completa..."):
             try:
-                # A. REGISTRAZIONE DATI EXCEL (CORRETTO: 'urgente' anziché 'urgent')
+                # A. REGISTRAZIONE DATI EXCEL
                 data_str = data_corrente.strftime("%d/%m/%Y")
-                riga = {"Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", "Guasto": guasto_segnalato, "Intervento": descrizione_lavori, "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente}
+                stringa_firma = f"Firmato via SMS OTP il {data_str} (Codice: {st.session_state['codice_sms']})"
+                
+                riga = {
+                    "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, 
+                    "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", 
+                    "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori, 
+                    "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma
+                }
                 
                 df_vecchio = pd.read_excel(EXCEL_FILE) if os.path.exists(EXCEL_FILE) else pd.DataFrame()
                 df_nuovo = pd.concat([df_vecchio, pd.DataFrame([riga])], ignore_index=True)
                 df_nuovo.to_excel(EXCEL_FILE, index=False)
                 st.success(f"🎯 Intervento di {cliente} salvato nel registro Excel!")
 
-                # B. CONFIGURAZIONE E INVIO EMAIL VIA SMTP (PORTA 587)
+                # B. CONFIGURAZIONE E INVIO EMAIL HTML COMPLETA (PORTA 587)
                 email_mittente = "franciosoandrea@gmail.com" 
                 password_mittente = "qiad bvqq ijaj mutc "  
                 
                 msg = MIMEMultipart()
                 msg['From'] = email_mittente
                 msg['To'] = email_cliente
-                msg['Subject'] = f"Rapporto Intervento Tecnico - {cliente}"
+                msg['Subject'] = f"Rapporto Ufficiale Intervento Tecnico - {cliente}"
                 
-                testo_corpo = f"Buongiorno,\n\nConfermiamo la corretta registrazione del rapporto ufficiale per l'intervento odierno eseguito presso {cliente}.\n\nNote Intervento:\n{descrizione_lavori}\n\nFirma validata digitalmente tramite cellulare.\n\nCordiali Saluti\nNova Servimpianti."
-                msg.attach(MIMEText(testo_corpo, 'plain'))
+                # Creiamo il corpo dell'email in HTML elegante per contenere TUTTI i dati del rapporto
+                corpo_html = f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                    <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+                        <h2 style="color: #1A365D; border-bottom: 2px solid #2C5282; padding-bottom: 10px;">🛠️ RAPPORTO DI INTERVENTO TECNICO</h2>
+                        <p>Buongiorno, inviamo di seguito il riepilogo ufficiale dell'intervento odierno eseguito da <b>Nova Servimpianti</b>.</p>
+                        
+                        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                            <tr style="background-color: #f7fafc;"><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 40%;">Data Intervento:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{data_str}</td></tr>
+                            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Ragione Sociale:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{cliente}</td></tr>
+                            <tr style="background-color: #f7fafc;"><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Marchio Apparecchio:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{marchio}</td></tr>
+                            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Matricola:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{matricola if matricola else 'N.D.'}</td></tr>
+                            <tr style="background-color: #f7fafc;"><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Kilometri / Ore Lavoro:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{km} Km / {ore_lavoro} ore</td></tr>
+                            <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Richiesto Preventivo / Urgente:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{preventivo} / {urgente}</td></tr>
+                        </table>
+                        
+                        <h4 style="color: #2C5282; margin-bottom: 5px;">■ GUASTO SEGNALATO:</h4>
+                        <p style="background-color: #f7fafc; padding: 10px; border-left: 4px solid #cbd5e0; margin-top: 0;">{guasto_segnalato if guasto_segnalato else 'N.D.'}</p>
+                        
+                        <h4 style="color: #2C5282; margin-bottom: 5px;">■ INTERVENTO ESEGUITO / NOTE TECNICHE:</h4>
+                        <p style="background-color: #f7fafc; padding: 10px; border-left: 4px solid #4299e1; margin-top: 0;">{descrizione_lavori}</p>
+                        
+                        <div style="background-color: #ebf8ff; border: 1px solid #bee3f8; padding: 12px; border-radius: 4px; margin-top: 25px; font-size: 13px;">
+                            🔒 <b>Certificato di Validazione:</b><br/>
+                            {stringa_firma}<br/>
+                            <i>Documento convalidato sul posto tramite firma digitale SMS OTP (Inviata al numero: {cellulare_cliente})</i>
+                        </div>
+                        
+                        <p style="font-size: 12px; color: #718096; margin-top: 30px; text-align: center;">Nova Servimpianti — Email generata automaticamente dal gestionale di bordo.</p>
+                    </div>
+                </body>
+                </html>
+                """
+                msg.attach(MIMEText(corpo_html, 'html'))
                 
-                # Se è presente la foto dello schema, la alleghiamo direttamente alla mail
+                # Se è presente la foto della scheda cartacea, la alleghiamo alla mail
                 if file_immagine is not None:
                     try:
                         foto_img = Image.open(file_immagine).convert("RGB")
@@ -114,19 +154,17 @@ if tasto_registra:
                             part = MIMEBase("application", "octet-stream")
                             part.set_payload(attachment.read())
                             encoders.encode_base64(part)
-                            part.add_header("Content-Disposition", f"attachment; filename= foto_intervento.png")
+                            part.add_header("Content-Disposition", f"attachment; filename= foto_scheda_firmata.png")
                             msg.attach(part)
                     except Exception as img_err:
                         st.warning(f"Impossibile allegare la foto all'email: {img_err}")
                 
-                # Connessione al server Gmail SMTP sulla porta 587
+                # Invio effettivo sul server SMTP di Gmail sulla porta 587
                 server = smtplib.SMTP("smtp.gmail.com", 587)
                 server.starttls()  
                 server.login(email_mittente, password_mittente)
                 server.sendmail(email_mittente, email_cliente, msg.as_string())
                 server.quit()
                 
-                st.success("✉️ Email di notifica inviata correttamente al cliente!")
+                st.success("✉️ Rapporto completo inviato correttamente via email al cliente!")
                 
-            except Exception as e:
-                st.error(f"Si è verificato un problema durante l'operazione: {e}")
