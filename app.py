@@ -13,11 +13,15 @@ st.write("Gestionale riparazioni Nova Servimpianti con validazione SMS OTP ed in
 EXCEL_FILE = "registro_riparazioni.xlsx"
 LOGO_FILE = "logo.png"  
 
-# Inizializzazione variabili per il codice segreto OTP
+# --- INIZIALIZZAZIONE STATI DI SESSIONE (FONDAMENTALI IN STREAMLIT) ---
 if "codice_sms" not in st.session_state:
     st.session_state["codice_sms"] = None
 if "sms_validato" not in st.session_state:
     st.session_state["sms_validato"] = False
+if "report_creato" not in st.session_state:
+    st.session_state["report_creato"] = False
+if "pdf_filename" not in st.session_state:
+    st.session_state["pdf_filename"] = ""
 
 # --- 1. MODULO DI INPUT DATI ---
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
@@ -70,6 +74,7 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
+        st.session_state["report_creato"] = False # Resetta lo stato di un vecchio report
         invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
         st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
         st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
@@ -80,6 +85,7 @@ if st.session_state["codice_sms"] is not None and not st.session_state["sms_vali
         if codice_inserito == st.session_state["codice_sms"]:
             st.session_state["sms_validato"] = True
             st.success("🔒 Documento Firmato e Convalidato tramite cellulare con Successo!")
+            st.rerun()
         else:
             st.error("❌ Codice errato! Riprova.")
 
@@ -107,7 +113,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             encoders.encode_base64(part)
             part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
             msg.attach(part)
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("smpt.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg.as_string())
@@ -152,13 +158,17 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         story.append(Paragraph(f"<i>🔒 {stringa_firma}</i>", firma_style))
         
         if file_immagine is not None:
-            story.append(Spacer(1, 25))
-            story.append(Paragraph("<b>■ ALLEGATO FOTO SCHEDA</b>", section_heading))
-            foto_img = Image.open(file_immagine).convert("RGB")
-            foto_path = "temp_allegato.png"
-            foto_img.thumbnail((500, 450))
-            foto_img.save(foto_path)
-            story.append(RLImage(foto_path, width=450, height=350))
+            try:
+                story.append(Spacer(1, 25))
+                story.append(Paragraph("<b>■ ALLEGATO FOTO SCHEDA</b>", section_heading))
+                foto_img = Image.open(file_immagine).convert("RGB")
+                foto_path = "temp_allegato.png"
+                foto_img.thumbnail((500, 450))
+                foto_img.save(foto_path)
+                story.append(RLImage(foto_path, width=450, height=350))
+            except Exception as img_err:
+                st.warning(f"Impossibile allegare la foto al PDF: {img_err}")
+                
         doc.build(story)
     except Exception as e:
         st.error(f"Errore generazione PDF: {e}")
@@ -175,13 +185,3 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
     else:
         df = pd.DataFrame([riga])
-    df.to_excel(EXCEL_FILE, index=False)
-
-# --- 7. BOTTONE DI SALVATAGGIO OTTIMIZZATO ---
-if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    # 1. Verifica dei campi obbligatori
-    campi_compilati = True
-    if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
-        st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
-        campi_compilati = False
-        
