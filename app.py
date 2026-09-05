@@ -34,7 +34,7 @@ with st.expander("📝 Stato della Riparazione", expanded=True):
 
 with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
     km = st.number_input("Kilometri percorsi (Km)", min_value=0, value=0, step=1)
-    ore_lavoro = st.number_input("Ore di lavoro impieagate", min_value=0.0, value=0.0, step=0.5)
+    ore_lavoro = st.number_input("Ore di lavoro impiegate", min_value=0.0, value=0.0, step=0.5)
     col1, col2 = st.columns(2)
     with col1:
         preventivo = st.radio("Richiedi Preventivo?", ["NO", "SI"])
@@ -177,11 +177,11 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         df = pd.DataFrame([riga])
     df.to_excel(EXCEL_FILE, index=False)
 
-# --- 7. BOTTONE DI SALVATAGGIO REALE E FUNZIONANTE ---
+# --- 7. BOTTONE DI SALVATAGGIO OTTIMIZZATO ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    # 1. Controllo Campi Obbligatori
+    # 1. Verifica dei campi obbligatori
+    campi_compilati = True
     if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
         st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
-    
-    # 2. Controllo se l'SMS OTP è stato validato
-    elif not st.session_state["sms_validato"]:
+        campi_compilati = False
+        
