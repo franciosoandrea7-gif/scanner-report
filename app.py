@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
 import os
+import base64
 from PIL import Image
 from datetime import datetime
+import io
 
 st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
@@ -35,11 +37,56 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
 st.subheader("📸 Foto Scheda Firmata (Opzionale)")
 file_immagine = st.camera_input("Scatta la foto alla scheda cartacea se presente")
 
+# --- SEZIONE 2: SCHERMO BIANCO NATIVIO PER FIRMA TOUCH ---
 st.subheader("✍️ Firma Digitale del Cliente")
-st.write("Usa lo strumento dell'iPad/Telefono per far firmare il cliente sul display:")
-file_firma = st.file_uploader("Carica o disegna la firma del cliente", type=["png", "jpg", "jpeg"])
+st.write("Fai firmare il cliente con il dito nel riquadro bianco qui sotto:")
 
-# --- SEZIONE 2: FUNZIONE INVIO EMAIL ---
+# Componente HTML + Javascript per la firma touch a schermo intero o parziale
+canvas_html = """
+<div style="border:2px solid #CBD5E0; border-radius:8px; background-color:#ffffff; padding:5px;">
+    <canvas id="signature-pad" width="450" height="150" style="width:100%; height:150px; cursor:crosshair; touch-action:none;"></canvas>
+</div>
+<div style="margin-top:10px;">
+    <button id="clear-btn" style="background-color:#E2E8F0; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; cursor:pointer;">Cancella Firma</button>
+</div>
+
+<script src="https://jsdelivr.net"></script>
+<script>
+    const canvas = document.getElementById('signature-pad');
+    const signaturePad = new SignaturePad(canvas, {
+        backgroundColor: 'rgb(255, 255, 255)',
+        penColor: 'rgb(0, 0, 0)'
+    });
+    
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        signaturePad.clear();
+        window.parent.postMessage({type: 'streamlit:setComponentValue', value: ''}, '*');
+    });
+
+    canvas.addEventListener('touchend', sendData);
+    canvas.addEventListener('mouseup', sendData);
+
+    function sendData() {
+        if (!signaturePad.isEmpty()) {
+            const dataUrl = signaturePad.toDataURL('image/png');
+            window.parent.postMessage({type: 'streamlit:setComponentValue', value: dataUrl}, '*');
+        }
+    }
+</script>
+"""
+
+# Visualizza lo schermo bianco per firmare raccogliendo il risultato in Streamlit
+import streamlit.components.v1 as components
+firma_base64 = components.html(canvas_html, height=210)
+
+# Tracciamento interno del valore della firma
+if "valore_firma" not in st.session_state:
+    st.session_state["valore_firma"] = None
+
+# Messaggio di stato firma
+st.info("💡 Fai firmare sul display prima di premere il tasto Registra in fondo.")
+
+# --- SEZIONE 3: FUNZIONE INVIO EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     import smtplib
     from email.mime.multipart import MIMEMultipart
@@ -48,7 +95,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # <--- INSERISCI LA TUA PASSWORD QUI
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- INSERISCI LA TUA PASSWORD QUI
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -73,8 +120,8 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     except Exception as e:
         st.warning(f"⚠️ Nota: Dati salvati, ma l'email non è partita. Errore: {e}")
 
-# --- SEZIONE 3: FUNZIONE CREAZIONE PDF ---
-def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_firma, file_immagine):
+# --- SEZIONE 4: FUNZIONE CREAZIONE PDF ---
+def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
@@ -114,21 +161,14 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matrico
     story.append(Spacer(1, 20))
     story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
     story.append(Spacer(1, 10))
+    
     story.append(Paragraph("<b>Firma del Tecnico:</b>", body_style))
     story.append(Spacer(1, 40)) 
     story.append(Paragraph("___________________________", body_style))
     
     story.append(Spacer(1, 50)) # AMPIO STACCO TRA LE DUE FIRME
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
-    
-    if file_firma is not None:
-        firma_img = Image.open(file_firma)
-        firma_path = "temp_firma_digital.png"
-        firma_img.thumbnail((150, 60))
-        firma_img.save(firma_path)
-        story.append(Spacer(1, 5))
-        story.append(RLImage(firma_path))
-    
+    story.append(Spacer(1, 40))
     story.append(Paragraph("___________________________", body_style))
     story.append(Spacer(1, 25))
     
@@ -143,7 +183,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matrico
         
     doc.build(story)
 
-# --- SEZIONE 4: LOGICA DI SALVATAGGIO GENERALE ---
+# --- SEZIONE 5: LOGICA DI SALVATAGGIO GENERALE ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori:
         st.error("⚠️ Inserisci almeno Cliente, Marchio e Descrizione Lavori!")
@@ -165,24 +205,3 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     df_esistente = pd.read_excel(EXCEL_FILE)
                     df_finale = pd.concat([df_esistente, df_nuovo], ignore_index=True)
                 else:
-                    df_finale = df_nuovo
-                df_finale.to_excel(EXCEL_FILE, index=False)
-
-                # B) CHIAMATA CREAZIONE PDF
-                cliente_pulito = cliente.replace(" ", "_").replace("/", "_")
-                pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{cliente_pulito}.pdf"
-                
-                elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_firma, file_immagine)
-                st.success("🎉 Dati registrati in Excel e PDF generato correttamente!")
-                
-                if email_cliente:
-                    invia_email_pdf(email_cliente, pdf_filename, cliente)
-                    
-                # C) PULSANTI DOWNLOAD DI SICUREZZA
-                with open(EXCEL_FILE, "rb") as f:
-                    st.download_button("📥 Scarica Excel Completo", f, file_name=EXCEL_FILE)
-                with open(pdf_filename, "rb") as f:
-                    st.download_button("📥 Scarica PDF Report", f, file_name=pdf_filename)
-                    
-            except Exception as e:
-                st.error(f"Errore generale: {e}")
