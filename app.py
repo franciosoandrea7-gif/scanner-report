@@ -11,7 +11,7 @@ st.write("Gestionale riparazioni Nova Servimpianti con firma ed invio PDF.")
 EXCEL_FILE = "registro_riparazioni.xlsx"
 LOGO_FILE = "logo.png"  
 
-# --- INPUT DATI ---
+# --- 1. MODULO DI INPUT DATI ---
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
     data_corrente = st.date_input("Data Intervento", datetime.now())
     cliente = st.text_input("Ragione Sociale Cliente *")
@@ -35,31 +35,80 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
 st.subheader("📸 Foto Scheda Firmata (Opzionale)")
 file_immagine = st.camera_input("Scatta la foto alla scheda cartacea se presente")
 
-# --- SCHERMO BIANCO NATIVO PER FIRMA TOUCH ---
+# --- 2. SCHERMO BIANCO NATIVO PER FIRMA TOUCH ---
 st.subheader("✍️ Firma Digitale del Cliente")
 st.write("Fai firmare il cliente con il dito nel riquadro bianco qui sotto:")
 
+# Sistema di disegno nativo in JavaScript (senza librerie esterne)
 canvas_html = """
-<div style="border:2px solid #CBD5E0; border-radius:8px; background-color:#ffffff; padding:5px;">
-    <canvas id="signature-pad" width="450" height="150" style="width:100%; height:150px; cursor:crosshair; touch-action:none;"></canvas>
+<div style="border:2px solid #CBD5E0; border-radius:8px; background-color:#ffffff; padding:5px; touch-action:none;">
+    <canvas id="paint" width="450" height="150" style="width:100%; height:150px; background-color:#ffffff; cursor:crosshair;"></canvas>
 </div>
 <div style="margin-top:10px;">
-    <button id="clear-btn" style="background-color:#E2E8F0; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; cursor:pointer;">Cancella Firma</button>
+    <button id="clear" style="background-color:#E2E8F0; border:none; padding:8px 15px; border-radius:5px; font-weight:bold; cursor:pointer;">Cancella Disegno</button>
 </div>
-<script src="https://jsdelivr.net"></script>
+
 <script>
-    const canvas = document.getElementById('signature-pad');
-    const signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgb(255, 255, 255)', penColor: 'rgb(0, 0, 0)' });
-    document.getElementById('clear-btn').addEventListener('click', () => { signaturePad.clear(); window.parent.postMessage({type: 'streamlit:setComponentValue', value: ''}, '*'); });
-    function sendData() { if (!signaturePad.isEmpty()) { const dataUrl = signaturePad.toDataURL('image/png'); window.parent.postMessage({type: 'streamlit:setComponentValue', value: dataUrl}, '*'); } }
-    canvas.addEventListener('touchend', sendData); canvas.addEventListener('mouseup', sendData);
+    var canvas = document.getElementById('paint');
+    var ctx = canvas.getContext('2d');
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000000';
+    
+    var drawing = false;
+
+    // Mouse eventi
+    canvas.addEventListener('mousedown', function(e) { drawing = true; draw(e); }, false);
+    canvas.addEventListener('mousemove', draw, false);
+    canvas.addEventListener('mouseup', function() { drawing = false; ctx.beginPath(); sendData(); }, false);
+
+    // Touch eventi per iPad e Smartphone
+    canvas.addEventListener('touchstart', function(e) { drawing = true; drawTouch(e); e.preventDefault(); }, false);
+    canvas.addEventListener('touchmove', function(e) { drawTouch(e); e.preventDefault(); }, false);
+    canvas.addEventListener('touchend', function(e) { drawing = false; ctx.beginPath(); sendData(); e.preventDefault(); }, false);
+
+    function draw(e) {
+        if (!drawing) return;
+        var rect = canvas.getBoundingClientRect();
+        var x = (e.clientX - rect.left) * (canvas.width / rect.width);
+        var y = (e.clientY - rect.top) * (canvas.height / rect.height);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    function drawTouch(e) {
+        if (!drawing) return;
+        var rect = canvas.getBoundingClientRect();
+        var touch = e.touches[0];
+        var x = (touch.clientX - rect.left) * (canvas.width / rect.width);
+        var y = (touch.clientY - rect.top) * (canvas.height / rect.height);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    document.getElementById('clear').addEventListener('click', function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('firma_input').value = "";
+    }, false);
+
+    function sendData() {
+        var dataUrl = canvas.toDataURL('image/png');
+        window.parent.postMessage({type: 'streamlit:setComponentValue', value: dataUrl}, '*');
+    }
 </script>
 """
 import streamlit.components.v1 as components
+# Crea il riquadro grafico nativo touch
 firma_base64 = components.html(canvas_html, height=210)
-st.info("💡 Fai firmare sul display prima di premere il tasto Registra in fondo.")
 
-# --- INVIO EMAIL ---
+st.info("💡 Fai firmare sul display dell'iPad/Telefono. Se non vedi il tratto, muovi il dito con decisione sul riquadro bianco.")
+
+# --- 3. LOGICA INVIO EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     import smtplib
     from email.mime.multipart import MIMEMultipart
@@ -67,7 +116,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email.mime.base import MIMEBase
     from email import encoders
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "la-tua-password-di-16-lettere-di-google"  # <--- METTI LA TUA PASSWORD QUI
+    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
@@ -80,7 +129,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             encoders.encode_base64(part)
             part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
             msg.attach(part)
-        server = smtplib.SMTP("://gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg.as_string())
@@ -89,7 +138,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     except Exception as e:
         st.warning(f"⚠️ Nota email non partita: {e}")
 
-# --- CREAZIONE PDF ---
+# --- 4. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -113,13 +162,15 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matrico
     story.append(Spacer(1, 10))
     story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
+    
     story.append(Spacer(1, 25))
     story.append(Paragraph("<b>Firma del Tecnico:</b><br/><br/><br/>___________________________", body_style))
-    story.append(Spacer(1, 50)) 
+    story.append(Spacer(1, 55)) # SPAZIO DI SICUREZZA LARGHEZZA FIRME
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b><br/><br/><br/>___________________________", body_style))
+    
     if file_immagine is not None:
         story.append(Spacer(1, 25))
-        story.append(Paragraph("<b>■ ALLEGATO FOTO</b>", section_heading))
+        story.append(Paragraph("<b>■ ALLEGATO FOTO SCHEDA</b>", section_heading))
         foto_img = Image.open(file_immagine)
         foto_path = "temp_allegato.png"
         foto_img.thumbnail((500, 450))
@@ -130,7 +181,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matrico
     except Exception as e:
         st.error(f"Errore build PDF: {e}")
 
-# --- BOTTONE DI SALVATAGGIO ---
+# --- 5. BOTTONE DI SALVATAGGIO ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori:
         st.error("⚠️ Compila i campi obbligatori (*)!")
@@ -138,23 +189,11 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         data_str = data_corrente.strftime("%d/%m/%Y")
         riga = {"Data": data_str, "Cliente": cliente, "Email": email_cliente if email_cliente else "N.D.", "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori, "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente}
         
-        # Salvataggio Excel protetto e cortissimo
         if os.path.exists(EXCEL_FILE):
             df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
         else:
             df = pd.DataFrame([riga])
         df.to_excel(EXCEL_FILE, index=False)
         
-        # Generazione PDF
         c_pulito = cliente.replace(" ", "_").replace("/", "_")
         pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
-        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine)
-        
-        st.success("🎉 Dati salvati in Excel e PDF generato correttamente!")
-        if email_cliente:
-            invia_email_pdf(email_cliente, pdf_filename, cliente)
-            
-        with open(EXCEL_FILE, "rb") as f:
-            st.download_button("📥 Scarica Excel", f, file_name=EXCEL_FILE)
-        with open(pdf_filename, "rb") as f:
-            st.download_button("📥 Scarica PDF", f, file_name=pdf_filename)
