@@ -13,7 +13,7 @@ st.write("Gestionale riparazioni Nova Servimpianti con validazione SMS OTP ed in
 EXCEL_FILE = "registro_riparazioni.xlsx"
 LOGO_FILE = "logo.png"  
 
-# --- INIZIALIZZAZIONE STATI DI SESSIONE (FONDAMENTALI IN STREAMLIT) ---
+# --- INIZIALIZZAZIONE STATI DI SESSIONE ---
 if "codice_sms" not in st.session_state:
     st.session_state["codice_sms"] = None
 if "sms_validato" not in st.session_state:
@@ -74,20 +74,24 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
-        st.session_state["report_creato"] = False # Resetta lo stato di un vecchio report
+        st.session_state["report_creato"] = False
         invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
         st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
         st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
 
-if st.session_state["codice_sms"] is not None and not st.session_state["sms_validato"]:
-    codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
-    if st.button("✅ VALIDA CODICE SMS"):
-        if codice_inserito == st.session_state["codice_sms"]:
-            st.session_state["sms_validato"] = True
-            st.success("🔒 Documento Firmato e Convalidato tramite cellulare con Successo!")
-            st.rerun()
-        else:
-            st.error("❌ Codice errato! Riprova.")
+# Manteniamo visibile il box di inserimento e validazione del codice
+if st.session_state["codice_sms"] is not None:
+    if not st.session_state["sms_validato"]:
+        codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
+        if st.button("✅ VALIDA CODICE SMS"):
+            if codice_inserito == st.session_state["codice_sms"]:
+                st.session_state["sms_validato"] = True
+                st.success("🔒 Documento Firmato e Convalidato tramite cellulare con Successo!")
+                st.rerun()
+            else:
+                st.error("❌ Codice errato! Riprova.")
+    else:
+        st.success(f"🔒 Documento già Convalidato con Successo! (Codice utilizzato: {st.session_state['codice_sms']})")
 
 # --- 4. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
@@ -113,7 +117,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             encoders.encode_base64(part)
             part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
             msg.attach(part)
-        server = smtplib.SMTP("smpt.gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg.as_string())
@@ -182,6 +186,3 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgent, "Firma": stringa_firma
     }
     if os.path.exists(EXCEL_FILE):
-        df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
-    else:
-        df = pd.DataFrame([riga])
