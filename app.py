@@ -18,10 +18,6 @@ if "codice_sms" not in st.session_state:
     st.session_state["codice_sms"] = None
 if "sms_validato" not in st.session_state:
     st.session_state["sms_validato"] = False
-if "report_creato" not in st.session_state:
-    st.session_state["report_creato"] = False
-if "pdf_filename" not in st.session_state:
-    st.session_state["pdf_filename"] = ""
 
 # --- 1. MODULO DI INPUT DATI ---
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
@@ -74,12 +70,11 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
-        st.session_state["report_creato"] = False
         invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
         st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
         st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
 
-# Manteniamo visibile il box di inserimento e validazione del codice
+# Manteniamo sempre visibile la convalida se il codice è stato generato
 if st.session_state["codice_sms"] is not None:
     if not st.session_state["sms_validato"]:
         codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
@@ -177,7 +172,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     except Exception as e:
         st.error(f"Errore generazione PDF: {e}")
 
-# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI (REINDENTATA CORRETTAMENTE) ---
+# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI ---
 def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgent, stringa_firma):
     riga = {
         "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente,
@@ -185,3 +180,10 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori,
         "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgent, "Firma": stringa_firma
     }
+    if os.path.exists(EXCEL_FILE):
+        df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
+    else:
+        df = pd.DataFrame([riga])
+    df.to_excel(EXCEL_FILE, index=False)
+
+
