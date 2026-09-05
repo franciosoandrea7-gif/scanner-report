@@ -10,6 +10,10 @@ from email.mime.base import MIMEBase
 from email import encoders
 from PIL import Image
 from datetime import datetime
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
 
 st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
@@ -102,7 +106,7 @@ if tasto_registra:
             pdf_filename = f"Rapporto_{cliente.replace(' ', '_')}_{data_corrente.strftime('%Y%m%d')}.pdf"
             st.session_state["ultimo_pdf"] = pdf_filename
 
-            # 1️⃣ REGISTRAZIONE DATI EXCEL PERSISTENTE
+            # 1️⃣ REGISTRAZIONE DATI EXCEL
             riga = {
                 "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, 
                 "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", 
@@ -114,68 +118,68 @@ if tasto_registra:
             df_nuovo.to_excel(EXCEL_FILE, index=False)
 
             # 2️⃣ GENERAZIONE DEL FILE PDF CON REPORTLAB
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import letter
-
-            try:
-                doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
-                styles = getSampleStyleSheet()
-                title_style = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
-                section_heading = ParagraphStyle('T2', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
-                body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
-                firma_style = ParagraphStyle('T4', parent=styles['Normal'], fontSize=9, leading=14, textColor=colors.HexColor("#4A5568"))
-                
-                story = []
-                if os.path.exists(LOGO_FILE):
-                    story.append(RLImage(LOGO_FILE, width=530, height=75))
-                    story.append(Spacer(1, 15))
-                
-                story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
-                story.append(Spacer(1, 10))
-                story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente}<br/><b>Cellulare:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore Lavoro:</b> {ore_lavoro}<br/><b>Richiesto Preventivo:</b> {preventivo} | <b>Intervento Urgente:</b> {urgente}", body_style))
+            doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
+            section_heading = ParagraphStyle('T2', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
+            body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
+            firma_style = ParagraphStyle('T4', parent=styles['Normal'], fontSize=9, leading=14, textColor=colors.HexColor("#4A5568"))
+            
+            story = []
+            if os.path.exists(LOGO_FILE):
+                story.append(RLImage(LOGO_FILE, width=530, height=75))
                 story.append(Spacer(1, 15))
-                story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
-                story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
-                story.append(Spacer(1, 10))
-                story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
-                story.append(Paragraph(descrizione_lavori, body_style))
-                story.append(Spacer(1, 25))
-                story.append(Paragraph("<b>Firma del Tecnico:</b><br/><br/><br/>___________________________", body_style))
-                story.append(Spacer(1, 35)) 
-                story.append(Paragraph("<b>Firma per Accettazione Cliente (Validazione SMS OTP):</b>", body_style))
-                story.append(Spacer(1, 5))
-                story.append(Paragraph(f"<i>🔒 {stringa_firma}</i>", firma_style))
-                
-                if file_immagine is not None:
-                    foto_img = Image.open(file_immagine).convert("RGB")
-                    foto_path = "temp_allegato_pdf.png"
-                    foto_img.thumbnail((500, 450))
-                    foto_img.save(foto_path)
-                    story.append(Spacer(1, 20))
-                    story.append(Paragraph("<b>■ ALLEGATO FOTO INTERVENTO</b>", section_heading))
-                    story.append(RLImage(foto_path, width=420, height=320))
-                
-                doc.build(story)
-            except Exception as pdf_err:
-                st.error(f"Errore tecnico durante la scrittura fisica del PDF: {pdf_err}")
+            
+            story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
+            story.append(Spacer(1, 10))
+            story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente}<br/><b>Cellulare:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore Lavoro:</b> {ore_lavoro}<br/><b>Richiesto Preventivo:</b> {preventivo} | <b>Intervento Urgente:</b> {urgente}", body_style))
+            story.append(Spacer(1, 15))
+            story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
+            story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
+            story.append(Spacer(1, 10))
+            story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
+            story.append(Paragraph(descrizione_lavori, body_style))
+            story.append(Spacer(1, 25))
+            story.append(Paragraph("<b>Firma del Tecnico:</b><br/><br/><br/>___________________________", body_style))
+            story.append(Spacer(1, 35)) 
+            story.append(Paragraph("<b>Firma per Accettazione Cliente (Validazione SMS OTP):</b>", body_style))
+            story.append(Spacer(1, 5))
+            story.append(Paragraph(f"<i>🔒 {stringa_firma}</i>", firma_style))
+            
+            if file_immagine is not None:
+                foto_img = Image.open(file_immagine).convert("RGB")
+                foto_path = "temp_allegato_pdf.png"
+                foto_img.thumbnail((500, 450))
+                foto_img.save(foto_path)
+                story.append(Spacer(1, 20))
+                story.append(Paragraph("<b>■ ALLEGATO FOTO INTERVENTO</b>", section_heading))
+                story.append(RLImage(foto_path, width=420, height=320))
+            
+            doc.build(story)
 
-            # 3️⃣ INVIO EMAIL SMTP GMAIL (ISOLATO)
+            # 3️⃣ INVIO EMAIL SMTP GMAIL
             email_mittente = "franciosoandrea@gmail.com" 
             password_mittente = "qiad bvqq ijaj mutc "  
             
-            try:
-                msg = MIMEMultipart()
-                msg['From'] = email_mittente
-                msg['To'] = email_cliente
-                msg['Subject'] = f"Rapporto Ufficiale Intervento Tecnico - {cliente}"
-                
-                testo_email = f"Nova Servimpianti\n\nBuongiorno,\nin allegato inviamo il Rapporto di Intervento Tecnico ufficiale relativo ai lavori eseguiti in data odierna presso la vostra sede.\n\nIl documento e' stato firmato elettronicamente sul posto tramite codice di validazione SMS OTP.\n\nCordiali Saluti\nNova Servimpianti."
-                msg.attach(MIMEText(testo_email, 'plain'))
-                
-                if os.path.exists(pdf_filename):
-                    with open(pdf_filename, "rb") as attachment:
-                        part = MIMEBase("application", "octet-stream")
-                        part.set_payload(attachment.read())
-                        encoders.encode_base64(part)
+            msg = MIMEMultipart()
+            msg['From'] = email_mittente
+            msg['To'] = email_cliente
+            msg['Subject'] = f"Rapporto Ufficiale Intervento Tecnico - {cliente}"
+            
+            testo_email = f"Nova Servimpianti\n\nBuongiorno,\nin allegato inviamo il Rapporto di Intervento Tecnico ufficiale relativo ai lavori eseguiti in data odierna presso la vostra sede.\n\nIl documento e' stato firmato elettronicamente sul posto tramite codice di validazione SMS OTP.\n\nCordiali Saluti\nNova Servimpianti."
+            msg.attach(MIMEText(testo_email, 'plain'))
+            
+            if os.path.exists(pdf_filename):
+                with open(pdf_filename, "rb") as attachment:
+                    part = MIMEBase("application", "octet-stream")
+                    part.set_payload(attachment.read())
+                    encoders.encode_base64(part)
+                    part.add_header("Content-Disposition", f"attachment; filename= {pdf_filename}")
+                    msg.attach(part)
+            
+            server = smtplib.SMTP("smtpgmail.com", 587)
+            server.starttls()  
+            server.login(email_mittente, password_mittente)
+            server.sendmail(email_mittente, email_cliente, msg.as_string())
+            server.quit()
+
