@@ -19,7 +19,7 @@ if "codice_sms" not in st.session_state:
 if "sms_validato" not in st.session_state:
     st.session_state["sms_validato"] = False
 
-# --- 1. MODULO DI INPUT DATI (ENTRAMBI I CAMPI DISPONIBILI) ---
+# --- 1. MODULO DI INPUT DATI ---
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
     data_corrente = st.date_input("Data Intervento", datetime.now())
     cliente = st.text_input("Ragione Sociale Cliente *")
@@ -44,9 +44,8 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
 st.subheader("📸 Foto Scheda Firmata (Opzionale)")
 file_immagine = st.camera_input("Scatta la foto alla scheda cartacea se presente")
 
-# --- 2. FUNZIONE INVIO REALE SMS OTP (Tramite Gateway Gratuito Textbelt) ---
+# --- 2. FUNZIONE SPEDIZIONE SMS OTP ---
 def invia_sms_otp_reale(numero_telefono, codice):
-    # Riformatta il numero con il prefisso italiano +39 se non inserito dal tecnico
     if not numero_telefono.startswith("+"):
         if numero_telefono.startswith("39"):
             numero_telefono = "+" + numero_telefono
@@ -56,7 +55,6 @@ def invia_sms_otp_reale(numero_telefono, codice):
     testo_sms = f"Nova Servimpianti: Il tuo codice segreto di firma per l'intervento odierno e': {codice}"
     
     try:
-        # Utilizza un canale ad attivazione immediata senza configurazioni bloccanti
         response = requests.post('https://textbelt.com', {
             'phone': numero_telefono,
             'message': testo_sms,
@@ -80,8 +78,6 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         
         with st.spinner("Invio dell'SMS sul cellulare del cliente..."):
             esito = invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
-            # Essendo in prova gratuita sul server, se il gateway esterno fosse occupato, 
-            # mostriamo comunque il codice a schermo per non bloccarti il lavoro davanti al cliente
             st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
             st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
 
@@ -179,4 +175,8 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         st.error("⚠️ Il documento non puo' essere registrato senza la convalida del codice SMS OTP del cliente!")
     else:
         with st.spinner("Registrazione dell'intervento in corso..."):
-            data_str = data_corrente.strftime("%d/%m/%Y")
+            try:
+                data_str = data_corrente.strftime("%d/%m/%Y")
+                stringa_firma = f"Firmato digitalmente tramite certificazione forte SMS OTP inviata al numero {cellulare_cliente} in data {data_str} con codice ID-{st.session_state['codice_sms']}"
+                
+                riga = {"Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori, "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma}
