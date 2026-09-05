@@ -53,7 +53,6 @@ def invia_sms_otp_reale(numero_telefono, codice):
             numero_telefono = "+39" + numero_telefono
     testo_sms = f"Nova Servimpianti: Il tuo codice segreto di firma per l'intervento odierno e': {codice}"
     try:
-        # Quando acquisterai i crediti su Textbelt, sostituisci la parola 'textbelt' qui sotto con la tua chiave privata
         response = requests.post('https://textbelt.com', {
             'phone': numero_telefono, 'message': testo_sms, 'key': 'textbelt'
         })
@@ -78,7 +77,6 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         else:
             st.warning("⚠️ Quota SMS gratuita esaurita o errore di rete. Usa il codice di sblocco d'emergenza mostrato qui sotto.")
 
-# Questo blocco ora rimane SEMPRE visibile non appena premi il tasto invia, a prescindere dall'esito dell'SMS
 if st.session_state["codice_sms"] is not None:
     st.info(f"👉 CODICE DA INSERIRE PER CONVALIDARE: {st.session_state['codice_sms']}")
     
@@ -181,8 +179,20 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     except Exception as e:
         st.error(f"Errore generazione PDF: {e}")
 
-# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI ---
-def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgent, stringa_firma):
+# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI (BLINDATA) ---
+def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
     riga = {
-        "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente,
-        "Marchio": marchio, "Matricola": matricola if matricola else "N.D.",
+        "Data": data_str,
+        "Cliente": cliente,
+        "Email": email_cliente,
+        "Cellulare": cellulare_cliente,
+        "Marchio": marchio,
+        "Matricola": matricola if matricola else "N.D.",
+        "Guasto": guasto_segnalato if guasto_segnalato else "N.D.",
+        "Intervento": descrizione_lavori,
+        "Km": km,
+        "Ore": ore_lavoro,
+        "Preventivo": preventivo,
+        "Urgente": urgente,
+        "Firma": stringa_firma
+    }
