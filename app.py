@@ -37,7 +37,7 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
     ore_lavoro = st.number_input("Ore di lavoro impiegate", min_value=0.0, value=0.0, step=0.5)
     col1, col2 = st.columns(2)
     with col1:
-        preventivo = st.radio("Richiega Preventivo?", ["NO", "SI"])
+        preventivo = st.radio("Richiedi Preventivo?", ["NO", "SI"])
     with col2:
         urgente = st.radio("Intervento Urgente?", ["NO", "SI"])
 
@@ -92,12 +92,12 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
     
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc "  # Ricordati di proteggere questa chiave in produzione!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
-    msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
+    msg['Subject'] = f"Rapporto Intervento Técnico - {nome_cliente}"
     msg.attach(MIMEText("Buongiorno,\nin allegato copia del rapporto ufficiale Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
     
     try:
@@ -154,7 +154,8 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         if file_immagine is not None:
             story.append(Spacer(1, 25))
             story.append(Paragraph("<b>■ ALLEGATO FOTO SCHEDA</b>", section_heading))
-            foto_img = Image.open(file_immagine)
+            # CORREZIONE: Convertiamo esplicitamente in RGB per evitare crash con ReportLab
+            foto_img = Image.open(file_immagine).convert("RGB")
             foto_path = "temp_allegato.png"
             foto_img.thumbnail((500, 450))
             foto_img.save(foto_path)
@@ -177,10 +178,7 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         df = pd.DataFrame([riga])
     df.to_excel(EXCEL_FILE, index=False)
 
-# --- 7. BOTTONE DI SALVATAGGIO FUNZIONALE E LINEARE ---
+# --- 7. BOTTONE DI SALVATAGGIO REALE E FUNZIONANTE ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    # Controllo Campi Obbligatori
+    # 1. Controllo Campi Obbligatori
     if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
-        st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
-    
-    # Controllo Validazione SMS
