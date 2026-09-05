@@ -59,7 +59,6 @@ def invia_sms_otp_reale(numero_telefono, codice):
         return response.json().get("success", False)
     except:
         return False
-
 # --- 3. SEZIONE CONTROLLO SICUREZZA SMS ---
 st.subheader("🔒 Firma Digitale SMS OTP del Cliente")
 st.write("Spedisci un codice usa-e-getta sul cellulare del cliente per fargli convalidare il verbale sul posto:")
@@ -73,6 +72,7 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
         st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
 
+# Blocco inserimento codice fisso senza st.rerun() interni
 if st.session_state["codice_sms"] is not None:
     codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
     if st.button("✅ VALIDA CODICE SMS"):
@@ -84,6 +84,7 @@ if st.session_state["codice_sms"] is not None:
 
 if st.session_state["sms_validato"]:
     st.info("ℹ️ Documento firmato tramite cellulare. Ora puoi salvare il report in fondo alla pagina.")
+
 
 # --- 4. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
