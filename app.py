@@ -6,7 +6,7 @@ import requests
 from PIL import Image
 from datetime import datetime
 
-st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
+st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="with st.expander")
 st.title("🛠️ Nova Report Pro")
 st.write("Gestionale riparazioni Nova Servimpianti con validazione SMS OTP ed invio Email.")
 
@@ -23,8 +23,8 @@ if "sms_validato" not in st.session_state:
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
     data_corrente = st.date_input("Data Intervento", datetime.now())
     cliente = st.text_input("Ragione Sociale Cliente *")
-    email_cliente = st.text_input("Email Cliente (Per invio copia PDF del report) *")
-    cellulare_cliente = st.text_input("Numero di Cellulare Cliente (Per ricezione SMS OTP) *", placeholder="Es: 3471234567")
+    email_cliente = st.text_input("Email Cliente (Per invio copia PDF) *")
+    cellulare_cliente = st.text_input("Numero di Cellulare Cliente (Per SMS OTP) *", placeholder="Es: 3471234567")
     marchio = st.text_input("Marchio Apparecchio *")
     matricola = st.text_input("Matricola Apparecchio")
 
@@ -70,10 +70,9 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
-        with st.spinner("Invio dell'SMS sul cellulare del cliente..."):
-            invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
-            st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
-            st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
+        invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
+        st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
+        st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
 
 if st.session_state["codice_sms"] is not None and not st.session_state["sms_validato"]:
     codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
@@ -98,21 +97,18 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     msg['To'] = destinatario
     msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
     msg.attach(MIMEText("Buongiorno,\nin allegato copia del rapporto ufficiale Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
-    try:
-        with open(allegato_path, "rb") as attachment:
-            part = MIMEBase("application", "octet-stream")
-            part.set_payload(attachment.read())
-            encoders.encode_base64(part)
-            part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
-            msg.attach(part)
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(email_mittente, password_mittente)
-        server.sendmail(email_mittente, destinatario, msg.as_string())
-        server.quit()
-        st.success("✉️ Copia del report inviata correttamente all'email del cliente!")
-    except Exception as e:
-        st.warning(f"⚠️ Nota invio e-mail fallito: {e}")
+    with open(allegato_path, "rb") as attachment:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(attachment.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
+        msg.attach(part)
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(email_mittente, password_mittente)
+    server.sendmail(email_mittente, destinatario, msg.as_string())
+    server.quit()
+    st.success("✉️ Copia del report inviata correttamente all'email del cliente!")
 
 # --- 5. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma):
@@ -171,12 +167,14 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         df = pd.DataFrame([riga])
     df.to_excel(EXCEL_FILE, index=False)
 
-# --- 7. BOTTONE DI SALVATAGGIO ---
+# --- 7. BOTTONE DI SALVATAGGIO LINEARE SENZA TRY NO-CRASH ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
         st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
     elif not st.session_state["sms_validato"]:
         st.error("⚠️ Il documento non puo' essere registrato senza la convalida del codice SMS OTP del cliente!")
     else:
-        with st.spinner("Registrazione dell'intervento in corso..."):
-            try:
+        st.write("🔄 Registrazione in corso...")
+        data_str = data_corrente.strftime("%d/%m/%Y")
+        stringa_firma = f"Firmato digitalmente tramite certificazione forte SMS OTP inviata al numero {cellulare_cliente} in data {data_str} con codice ID-{st.session_state['codice_sms']}"
+        
