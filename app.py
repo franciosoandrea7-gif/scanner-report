@@ -37,11 +37,10 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
 st.subheader("📸 Foto Scheda Firmata (Opzionale)")
 file_immagine = st.camera_input("Scatta la foto alla scheda cartacea se presente")
 
-# --- SEZIONE 2: SCHERMO BIANCO NATIVIO PER FIRMA TOUCH ---
+# --- SEZIONE 2: SCHERMO BIANCO NATIVO PER FIRMA TOUCH ---
 st.subheader("✍️ Firma Digitale del Cliente")
 st.write("Fai firmare il cliente con il dito nel riquadro bianco qui sotto:")
 
-# Componente HTML + Javascript per la firma touch a schermo intero o parziale
 canvas_html = """
 <div style="border:2px solid #CBD5E0; border-radius:8px; background-color:#ffffff; padding:5px;">
     <canvas id="signature-pad" width="450" height="150" style="width:100%; height:150px; cursor:crosshair; touch-action:none;"></canvas>
@@ -75,15 +74,12 @@ canvas_html = """
 </script>
 """
 
-# Visualizza lo schermo bianco per firmare raccogliendo il risultato in Streamlit
 import streamlit.components.v1 as components
 firma_base64 = components.html(canvas_html, height=210)
 
-# Tracciamento interno del valore della firma
 if "valore_firma" not in st.session_state:
     st.session_state["valore_firma"] = None
 
-# Messaggio di stato firma
 st.info("💡 Fai firmare sul display prima di premere il tasto Registra in fondo.")
 
 # --- SEZIONE 3: FUNZIONE INVIO EMAIL ---
@@ -95,13 +91,13 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
 
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # <--- INSERISCI LA TUA PASSWORD QUI
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD QUI
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
     msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
-    msg.attach(MIMEText("Buongiorno,\nin allegato inviamo il rapporto tecnico in formato PDF.\n\nCordiali Saluti.", 'plain'))
+    msg.attach(MIMEText("Buongiorno,\nin allegato inviamo il rapport tecnico in formato PDF.\n\nCordiali Saluti.", 'plain'))
     
     try:
         with open(allegato_path, "rb") as attachment:
@@ -161,12 +157,11 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matrico
     story.append(Spacer(1, 20))
     story.append(Paragraph("------------------------------------------------------------------------------------------------------------------------", body_style))
     story.append(Spacer(1, 10))
-    
     story.append(Paragraph("<b>Firma del Tecnico:</b>", body_style))
     story.append(Spacer(1, 40)) 
     story.append(Paragraph("___________________________", body_style))
     
-    story.append(Spacer(1, 50)) # AMPIO STACCO TRA LE DUE FIRME
+    story.append(Spacer(1, 50)) 
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
     story.append(Spacer(1, 40))
     story.append(Paragraph("___________________________", body_style))
@@ -198,10 +193,15 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                     "Marchio": marchio, "Matricola": matricola if matricola else "N.D.",
                     "Guasto Segnalato": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori,
                     "Km": km if km > 0 else "0", "Ore Lavoro": ore_lavoro if ore_lavoro > 0 else "0",
-                    "Preventivo": preventivo, "Urgente": urgente
+                    "Preventivo": preventivo, "Urvgent": urgente
                 }
                 df_nuovo = pd.DataFrame([riga])
                 if os.path.exists(EXCEL_FILE):
                     df_esistente = pd.read_excel(EXCEL_FILE)
                     df_finale = pd.concat([df_esistente, df_nuovo], ignore_index=True)
                 else:
+                    df_finale = df_nuovo
+                df_finale.to_excel(EXCEL_FILE, index=False)
+
+                # B) CHIAMATA CREAZIONE PDF
+                cliente_pulito = cliente.replace(" ", "_").replace("/", "_")
