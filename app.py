@@ -92,7 +92,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email.mime.base import MIMEBase
     from email import encoders
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
