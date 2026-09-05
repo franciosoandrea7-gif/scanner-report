@@ -73,7 +73,6 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
         st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
 
-# Blocco inserimento codice fisso senza st.rerun() interni
 if st.session_state["codice_sms"] is not None:
     codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
     if st.button("✅ VALIDA CODICE SMS"):
@@ -185,11 +184,12 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
     df.to_excel(EXCEL_FILE, index=False)
 
 
-# --- 7. AREA DI AZIONE FINALE ---
+# --- 7. AREA DI AZIONE FINALE (STRUTTURA LINEARE ANTI-ERRORE) ---
 st.write("---")
 st.subheader("💾 Salvataggio Finale")
 
-# Pulsante completamente indipendente da qualsiasi condizione 'if' esterna
 tasto_registra = st.button("💾 REGISTRA E GENERA REPORT COMPLETO", type="primary")
 
 if tasto_registra:
+    # Controlli sequenziali flat
+    campi_validi = True
