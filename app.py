@@ -72,21 +72,19 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         st.session_state["sms_validato"] = False
         invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
         st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
-        st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
 
-# Manteniamo sempre visibile la convalida se il codice è stato generato
+# Blocco inserimento codice fisso senza st.rerun() interni
 if st.session_state["codice_sms"] is not None:
-    if not st.session_state["sms_validato"]:
-        codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
-        if st.button("✅ VALIDA CODICE SMS"):
-            if codice_inserito == st.session_state["codice_sms"]:
-                st.session_state["sms_validato"] = True
-                st.success("🔒 Documento Firmato e Convalidato tramite cellulare con Successo!")
-                st.rerun()
-            else:
-                st.error("❌ Codice errato! Riprova.")
-    else:
-        st.success(f"🔒 Documento già Convalidato con Successo! (Codice utilizzato: {st.session_state['codice_sms']})")
+    codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
+    if st.button("✅ VALIDA CODICE SMS"):
+        if codice_inserito == st.session_state["codice_sms"]:
+            st.session_state["sms_validato"] = True
+            st.success(f"🔒 Convalidato con Successo! (Codice: {st.session_state['codice_sms']})")
+        else:
+            st.error("❌ Codice errato! Riprova.")
+
+if st.session_state["sms_validato"]:
+    st.info("ℹ️ Documento firmato tramite cellulare. Ora puoi salvare il report in fondo alla pagina.")
 
 # --- 4. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
@@ -187,3 +185,11 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
     df.to_excel(EXCEL_FILE, index=False)
 
 
+# --- 7. AREA DI AZIONE FINALE ---
+st.write("---")
+st.subheader("💾 Salvataggio Finale")
+
+# Pulsante completamente indipendente da qualsiasi condizione 'if' esterna
+tasto_registra = st.button("💾 REGISTRA E GENERA REPORT COMPLETO", type="primary")
+
+if tasto_registra:
