@@ -53,12 +53,14 @@ def invia_sms_otp_reale(numero_telefono, codice):
             numero_telefono = "+39" + numero_telefono
     testo_sms = f"Nova Servimpianti: Il tuo codice segreto di firma per l'intervento odierno e': {codice}"
     try:
+        # Quando acquisterai i crediti su Textbelt, sostituisci la parola 'textbelt' qui sotto con la tua chiave privata
         response = requests.post('https://textbelt.com', {
             'phone': numero_telefono, 'message': testo_sms, 'key': 'textbelt'
         })
         return response.json().get("success", False)
     except:
         return False
+
 # --- 3. SEZIONE CONTROLLO SICUREZZA SMS ---
 st.subheader("🔒 Firma Digitale SMS OTP del Cliente")
 st.write("Spedisci un codice usa-e-getta sul cellulare del cliente per fargli convalidare il verbale sul posto:")
@@ -69,22 +71,31 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
-        invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
-        st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
-
-# Blocco inserimento codice fisso senza st.rerun() interni
-if st.session_state["codice_sms"] is not None:
-    codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
-    if st.button("✅ VALIDA CODICE SMS"):
-        if codice_inserito == st.session_state["codice_sms"]:
-            st.session_state["sms_validato"] = True
-            st.success(f"🔒 Convalidato con Successo! (Codice: {st.session_state['codice_sms']})")
+        esito = invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
+        
+        if esito:
+            st.success(f"📩 Richiesta SMS inoltrata con successo al numero: {cellulare_cliente}!")
         else:
-            st.error("❌ Codice errato! Riprova.")
+            st.warning("⚠️ Quota SMS gratuita esaurita o errore di rete. Usa il codice di sblocco d'emergenza mostrato qui sotto.")
+
+# Questo blocco ora rimane SEMPRE visibile non appena premi il tasto invia, a prescindere dall'esito dell'SMS
+if st.session_state["codice_sms"] is not None:
+    st.info(f"👉 CODICE DA INSERIRE PER CONVALIDARE: {st.session_state['codice_sms']}")
+    
+    if not st.session_state["sms_validato"]:
+        codice_inserito = st.text_input("Inserisci le 4 cifre visualizzate qui sopra per firmare:")
+        if st.button("✅ VALIDA CODICE SMS"):
+            if codice_inserito == st.session_state["codice_sms"]:
+                st.session_state["sms_validato"] = True
+                st.success("🔒 Documento Firmato e Convalidato con Successo!")
+                st.rerun()
+            else:
+                st.error("❌ Codice errato! Riprova.")
+    else:
+        st.success(f"🔒 Documento già Convalidato! (Codice: {st.session_state['codice_sms']})")
 
 if st.session_state["sms_validato"]:
-    st.info("ℹ️ Documento firmato tramite cellulare. Ora puoi salvare il report in fondo alla pagina.")
-
+    st.info("ℹ️ Stato firma: OK. Ora puoi procedere al salvataggio finale del report in fondo alla pagina.")
 
 # --- 4. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
@@ -175,22 +186,3 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
     riga = {
         "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente,
         "Marchio": marchio, "Matricola": matricola if matricola else "N.D.",
-        "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori,
-        "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgent, "Firma": stringa_firma
-    }
-    if os.path.exists(EXCEL_FILE):
-        df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
-    else:
-        df = pd.DataFrame([riga])
-    df.to_excel(EXCEL_FILE, index=False)
-
-
-# --- 7. AREA DI AZIONE FINALE (STRUTTURA LINEARE ANTI-ERRORE) ---
-st.write("---")
-st.subheader("💾 Salvataggio Finale")
-
-tasto_registra = st.button("💾 REGISTRA E GENERA REPORT COMPLETO", type="primary")
-
-if tasto_registra:
-    # Controlli sequenziali flat
-    campi_validi = True
