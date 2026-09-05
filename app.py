@@ -83,9 +83,9 @@ if tasto_registra:
     else:
         with st.spinner("Registrazione in corso e invio email..."):
             try:
-                # A. REGISTRAZIONE DATI EXCEL
+                # A. REGISTRAZIONE DATI EXCEL (CORRETTO: 'urgente' anziché 'urgent')
                 data_str = data_corrente.strftime("%d/%m/%Y")
-                riga = {"Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", "Guasto": guasto_segnalato, "Intervento": descrizione_lavori, "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgent}
+                riga = {"Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", "Guasto": guasto_segnalato, "Intervento": descrizione_lavori, "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente}
                 
                 df_vecchio = pd.read_excel(EXCEL_FILE) if os.path.exists(EXCEL_FILE) else pd.DataFrame()
                 df_nuovo = pd.concat([df_vecchio, pd.DataFrame([riga])], ignore_index=True)
@@ -94,19 +94,34 @@ if tasto_registra:
 
                 # B. CONFIGURAZIONE E INVIO EMAIL VIA SMTP (PORTA 587)
                 email_mittente = "franciosoandrea@gmail.com" 
-                password_mittente = "qiad bvqq ijaj mutc "  # Password per le app di Google (2FA)
+                password_mittente = "qiad bvqq ijaj mutc "  
                 
                 msg = MIMEMultipart()
                 msg['From'] = email_mittente
                 msg['To'] = email_cliente
                 msg['Subject'] = f"Rapporto Intervento Tecnico - {cliente}"
                 
-                testo_corpo = f"Buongiorno,\n\nConfermiamo la corretta registrazione del rapporto ufficiale per l'intervento odierno eseguito presso {cliente}.\n\nCordiali Saluti\nNova Servimpianti."
+                testo_corpo = f"Buongiorno,\n\nConfermiamo la corretta registrazione del rapporto ufficiale per l'intervento odierno eseguito presso {cliente}.\n\nNote Intervento:\n{descrizione_lavori}\n\nFirma validata digitalmente tramite cellulare.\n\nCordiali Saluti\nNova Servimpianti."
                 msg.attach(MIMEText(testo_corpo, 'plain'))
+                
+                # Se è presente la foto dello schema, la alleghiamo direttamente alla mail
+                if file_immagine is not None:
+                    try:
+                        foto_img = Image.open(file_immagine).convert("RGB")
+                        foto_path = "temp_allegato_email.png"
+                        foto_img.save(foto_path)
+                        with open(foto_path, "rb") as attachment:
+                            part = MIMEBase("application", "octet-stream")
+                            part.set_payload(attachment.read())
+                            encoders.encode_base64(part)
+                            part.add_header("Content-Disposition", f"attachment; filename= foto_intervento.png")
+                            msg.attach(part)
+                    except Exception as img_err:
+                        st.warning(f"Impossibile allegare la foto all'email: {img_err}")
                 
                 # Connessione al server Gmail SMTP sulla porta 587
                 server = smtplib.SMTP("smtp.gmail.com", 587)
-                server.starttls()  # Attivazione della crittografia di sicurezza
+                server.starttls()  
                 server.login(email_mittente, password_mittente)
                 server.sendmail(email_mittente, email_cliente, msg.as_string())
                 server.quit()
