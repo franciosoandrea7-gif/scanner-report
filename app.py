@@ -177,7 +177,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     except Exception as e:
         st.error(f"Errore generazione PDF: {e}")
 
-# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI ---
+# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI (REINDENTATA CORRETTAMENTE) ---
 def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgent, stringa_firma):
     riga = {
         "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente,
@@ -185,4 +185,3 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori,
         "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgent, "Firma": stringa_firma
     }
-    if os.path.exists(EXCEL_FILE):
