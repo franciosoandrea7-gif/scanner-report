@@ -24,7 +24,7 @@ if "codice_sms" not in st.session_state:
 if "sms_validato" not in st.session_state:
     st.session_state["sms_validato"] = False
 
-# --- 0. VISUALIZZAZIONE STORICO LAVORI SVOLTI (L'ARCHIVIO EXCEL COINVOLTO) ---
+# --- 0. VISUALIZZAZIONE STORICO LAVORI SVOLTI ---
 with st.expander("📚 Visualizza Archivio Storico Lavori Svolti (Excel)"):
     if os.path.exists(EXCEL_FILE):
         df_storico = pd.read_excel(EXCEL_FILE)
@@ -79,7 +79,7 @@ if st.session_state["codice_sms"] is not None:
     else:
         st.success("🔒 Documento già Convalidato con Successo!")
 
-# --- 3. BOTTONE FINALE (AGGIORNA EXCEL STORICO + GENERA PDF + INVIA EMAIL) ---
+# --- 3. BOTTONE FINALE (ECCEL + PDF + EMAIL SMTP GMAIL) ---
 st.write("---")
 st.subheader("💾 Operazione Finale")
 
@@ -91,13 +91,13 @@ if tasto_registra:
     elif not st.session_state["sms_validato"]:
         st.error("⚠️ Attenzione! Il cliente deve prima convalidare il codice SMS per apporre la firma!")
     else:
-        with st.spinner("Elaborazione simultanea: Aggiornamento registro, creazione PDF e invio email..."):
+        with st.spinner("Elaborazione in corso: Aggiornamento registro, creazione PDF e invio email..."):
             
             data_str = data_corrente.strftime("%d/%m/%Y")
             stringa_firma = f"Firmato via SMS OTP il {data_str} dal numero {cellulare_cliente} (Codice di convalida: {st.session_state['codice_sms']})"
             pdf_filename = f"Rapporto_{cliente.replace(' ', '_')}_{data_corrente.strftime('%Y%m%d')}.pdf"
 
-            # 1️⃣ OPERAZIONE EXCEL: Aggiorna l'elenco storico dei lavori svolti
+            # 1️⃣ OPERAZIONE EXCEL: Registro Storico Generale
             riga = {
                 "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, 
                 "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", 
@@ -109,7 +109,7 @@ if tasto_registra:
             df_nuovo.to_excel(EXCEL_FILE, index=False)
             st.success(f"🎯 Intervento memorizzato nell'archivio storico Excel!")
 
-            # 2️⃣ OPERAZIONE PDF: Genera l'impaginazione singola dell'intervento odierno
+            # 2️⃣ OPERAZIONE PDF: Generazione del file singolo dell'intervento odierno
             from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib import colors
@@ -158,18 +158,18 @@ if tasto_registra:
             except Exception as pdf_err:
                 st.error(f"Errore creazione PDF: {pdf_err}")
 
-            # 3️⃣ OPERAZIONE EMAIL: Spedisce il messaggio SMTP allegando il PDF appena nato
+            # 3️⃣ OPERAZIONE EMAIL: Invio del messaggio SMTP con il PDF allegato
             email_mittente = "franciosoandrea@gmail.com" 
             password_mittente = "qiad bvqq ijaj mutc "  
             
             msg = MIMEMultipart()
             msg['From'] = email_mittente
             msg['To'] = email_cliente
-            msg['Subject'] = f"Rapporto Ufficiale Intervento Tecnico - {cliente}"
+            msg['Subject'] = f"Rapporto Ufficiale Intervento Técnico - {cliente}"
             
-            corpo_html = f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-                    <h2 style="color: #1A365D;">🛠️ NOVA SERVIMPIANTI</h2>
-                    <p>Buongiorno,<br/>In allegato trasmettiamo il <b>Rapporto di Intervento Tecnico</b> in formato PDF, firmato digitalmente tramite cellulare sul posto.</p>
+            testo_email = f"Nova Servimpianti\n\nBuongiorno,\nin allegato inviamo il Rapporto di Intervento Tecnico ufficiale relativo ai lavori eseguiti in data odierna presso la vostra sede.\n\nIl documento e' stato firmato elettronicamente sul posto tramite codice di validazione SMS OTP.\n\nCordiali Saluti\nNova Servimpianti."
+            msg.attach(MIMEText(testo_email, 'plain'))
+            
+            if os.path.exists(pdf_filename):
+                with open(pdf_filename, "rb") as attachment:
+                    part = MIMEBase("application", "octet-stream")
