@@ -24,6 +24,16 @@ if "codice_sms" not in st.session_state:
 if "sms_validato" not in st.session_state:
     st.session_state["sms_validato"] = False
 
+# --- 0. VISUALIZZAZIONE STORICO LAVORI SVOLTI (L'ARCHIVIO EXCEL COINVOLTO) ---
+with st.expander("📚 Visualizza Archivio Storico Lavori Svolti (Excel)"):
+    if os.path.exists(EXCEL_FILE):
+        df_storico = pd.read_excel(EXCEL_FILE)
+        st.dataframe(df_storico)
+        with open(EXCEL_FILE, "rb") as f_excel:
+            st.download_button(label="📥 Scarica Intero Registro Excel (.xlsx)", data=f_excel, file_name=EXCEL_FILE, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    else:
+        st.info("ℹ️ L'archivio è attualmente vuoto. Diventerà visibile non appena registrerai il primo rapporto.")
+
 # --- 1. DATI INSERIMENTO ---
 st.subheader("👤 Dati Cliente & Macchina")
 data_corrente = st.date_input("Data Intervento", datetime.now())
@@ -54,22 +64,22 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
-        st.success("📩 Richiesta SMS elaborata!")
+        st.success("📩 Richiesta SMS dell'intervento elaborata con successo!")
 
 if st.session_state["codice_sms"] is not None:
-    st.info(f"👉 CODICE DA INSERIRE: {st.session_state['codice_sms']}")
+    st.info(f"👉 CODICE DI VALIDAZIONE DA INSERIRE: {st.session_state['codice_sms']}")
     if not st.session_state["sms_validato"]:
-        codice_inserito = st.text_input("Inserisci le 4 cifre per firmare:")
+        codice_inserito = st.text_input("Inserisci le 4 cifre per convalidare il verbale:")
         if st.button("✅ VALIDA CODICE SMS"):
             if codice_inserito == st.session_state["codice_sms"]:
                 st.session_state["sms_validato"] = True
-                st.success("🔒 Documento Convalidato! Procedi in fondo per il salvataggio.")
+                st.success("🔒 Documento Convalidato e Firmato! Procedi in fondo per il salvataggio.")
             else:
-                st.error("❌ Codice errato!")
+                st.error("❌ Codice errato! Controlla e riprova.")
     else:
-        st.success("🔒 Convalidato!")
+        st.success("🔒 Documento già Convalidato con Successo!")
 
-# --- 3. BOTTONE FINALE CON REGISTRAZIONE E INVIO EMAIL SMTP ---
+# --- 3. BOTTONE FINALE (AGGIORNA EXCEL STORICO + GENERA PDF + INVIA EMAIL) ---
 st.write("---")
 st.subheader("💾 Operazione Finale")
 
@@ -77,28 +87,78 @@ tasto_registra = st.button("💾 REGISTRA E GENERA REPORT COMPLETO", type="prima
 
 if tasto_registra:
     if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
-        st.error("⚠️ Compila tutti i campi obbligatori (*)")
+        st.error("⚠️ Compila tutti i campi obbligatori contrassegnati con l'asterisco (*)")
     elif not st.session_state["sms_validato"]:
-        st.error("⚠️ Il cliente deve prima convalidare il codice SMS!")
+        st.error("⚠️ Attenzione! Il cliente deve prima convalidare il codice SMS per apporre la firma!")
     else:
-        with st.spinner("Registrazione in corso e invio email completa..."):
-            # A. REGISTRAZIONE DATI EXCEL
-            data_str = data_corrente.strftime("%d/%m/%Y")
-            stringa_firma = f"Firmato via SMS OTP il {data_str} (Codice: {st.session_state['codice_sms']})"
+        with st.spinner("Elaborazione simultanea: Aggiornamento registro, creazione PDF e invio email..."):
             
+            data_str = data_corrente.strftime("%d/%m/%Y")
+            stringa_firma = f"Firmato via SMS OTP il {data_str} dal numero {cellulare_cliente} (Codice di convalida: {st.session_state['codice_sms']})"
+            pdf_filename = f"Rapporto_{cliente.replace(' ', '_')}_{data_corrente.strftime('%Y%m%d')}.pdf"
+
+            # 1️⃣ OPERAZIONE EXCEL: Aggiorna l'elenco storico dei lavori svolti
             riga = {
                 "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, 
                 "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", 
                 "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori, 
                 "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma
             }
-            
             df_vecchio = pd.read_excel(EXCEL_FILE) if os.path.exists(EXCEL_FILE) else pd.DataFrame()
             df_nuovo = pd.concat([df_vecchio, pd.DataFrame([riga])], ignore_index=True)
             df_nuovo.to_excel(EXCEL_FILE, index=False)
-            st.success(f"🎯 Intervento di {cliente} salvato nel registro Excel!")
+            st.success(f"🎯 Intervento memorizzato nell'archivio storico Excel!")
 
-            # B. CONFIGURAZIONE E INVIO EMAIL HTML COMPLETA (PORTA 587)
+            # 2️⃣ OPERAZIONE PDF: Genera l'impaginazione singola dell'intervento odierno
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+
+            try:
+                doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
+                styles = getSampleStyleSheet()
+                title_style = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
+                section_heading = ParagraphStyle('T2', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
+                body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
+                firma_style = ParagraphStyle('T4', parent=styles['Normal'], fontSize=9, leading=14, textColor=colors.HexColor("#4A5568"))
+                
+                story = []
+                if os.path.exists(LOGO_FILE):
+                    story.append(RLImage(LOGO_FILE, width=530, height=75))
+                    story.append(Spacer(1, 15))
+                
+                story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
+                story.append(Spacer(1, 10))
+                story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente}<br/><b>Cellulare:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore Lavoro:</b> {ore_lavoro}<br/><b>Richiesto Preventivo:</b> {preventivo} | <b>Intervento Urgente:</b> {urgente}", body_style))
+                story.append(Spacer(1, 15))
+                story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
+                story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
+                story.append(Spacer(1, 10))
+                story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
+                story.append(Paragraph(descrizione_lavori, body_style))
+                story.append(Spacer(1, 25))
+                story.append(Paragraph("<b>Firma del Tecnico:</b><br/><br/><br/>___________________________", body_style))
+                story.append(Spacer(1, 35)) 
+                story.append(Paragraph("<b>Firma per Accettazione Cliente (Validazione SMS OTP):</b>", body_style))
+                story.append(Spacer(1, 5))
+                story.append(Paragraph(f"<i>🔒 {stringa_firma}</i>", firma_style))
+                
+                if file_immagine is not None:
+                    foto_img = Image.open(file_immagine).convert("RGB")
+                    foto_path = "temp_allegato_pdf.png"
+                    foto_img.thumbnail((500, 450))
+                    foto_img.save(foto_path)
+                    story.append(Spacer(1, 20))
+                    story.append(Paragraph("<b>■ ALLEGATO FOTO INTERVENTO</b>", section_heading))
+                    story.append(RLImage(foto_path, width=420, height=320))
+                
+                doc.build(story)
+                st.success("📄 Documento PDF ufficiale dell'intervento generato!")
+            except Exception as pdf_err:
+                st.error(f"Errore creazione PDF: {pdf_err}")
+
+            # 3️⃣ OPERAZIONE EMAIL: Spedisce il messaggio SMTP allegando il PDF appena nato
             email_mittente = "franciosoandrea@gmail.com" 
             password_mittente = "qiad bvqq ijaj mutc "  
             
@@ -109,56 +169,7 @@ if tasto_registra:
             
             corpo_html = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <body style="font-family: Arial, sans-serif; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-                    <h2 style="color: #1A365D; border-bottom: 2px solid #2C5282; padding-bottom: 10px;">🛠️ RAPPORTO DI INTERVENTO TECNICO</h2>
-                    <p>Buongiorno, inviamo di seguito il riepilogo ufficiale dell'intervento odierno eseguito da <b>Nova Servimpianti</b>.</p>
-                    
-                    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                        <tr style="background-color: #f7fafc;"><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 40%;">Data Intervento:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{data_str}</td></tr>
-                        <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Ragione Sociale:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{cliente}</td></tr>
-                        <tr style="background-color: #f7fafc;"><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Marchio Apparecchio:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{marchio}</td></tr>
-                        <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Matricola:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{matricola if matricola else 'N.D.'}</td></tr>
-                        <tr style="background-color: #f7fafc;"><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Kilometri / Ore Lavoro:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{km} Km / {ore_lavoro} ore</td></tr>
-                        <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Richiesto Preventivo / Urgente:</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{preventivo} / {urgente}</td></tr>
-                    </table>
-                    
-                    <h4 style="color: #2C5282; margin-bottom: 5px;">■ GUASTO SEGNALATO:</h4>
-                    <p style="background-color: #f7fafc; padding: 10px; border-left: 4px solid #cbd5e0; margin-top: 0;">{guasto_segnalato if guasto_segnalato else 'N.D.'}</p>
-                    
-                    <h4 style="color: #2C5282; margin-bottom: 5px;">■ INTERVENTO ESEGUITO / NOTE TECNICHE:</h4>
-                    <p style="background-color: #f7fafc; padding: 10px; border-left: 4px solid #4299e1; margin-top: 0;">{descrizione_lavori}</p>
-                    
-                    <div style="background-color: #ebf8ff; border: 1px solid #bee3f8; padding: 12px; border-radius: 4px; margin-top: 25px; font-size: 13px;">
-                        🔒 <b>Certificato di Validazione:</b><br/>
-                        {stringa_firma}<br/>
-                        <i>Documento convalidato sul posto tramite firma digitale SMS OTP (Inviata al numero: {cellulare_cliente})</i>
-                    </div>
-                    
-                    <p style="font-size: 12px; color: #718096; margin-top: 30px; text-align: center;">Nova Servimpianti — Email generata automaticamente dal gestionale di bordo.</p>
-                </div>
-            </body>
-            </html>
-            """
-            msg.attach(MIMEText(corpo_html, 'html'))
-            
-            # Allegato Foto
-            if file_immagine is not None:
-                foto_img = Image.open(file_immagine).convert("RGB")
-                foto_path = "temp_allegato_email.png"
-                foto_img.save(foto_path)
-                with open(foto_path, "rb") as attachment:
-                    part = MIMEBase("application", "octet-stream")
-                    part.set_payload(attachment.read())
-                    encoders.encode_base64(part)
-                    part.add_header("Content-Disposition", f"attachment; filename= foto_scheda_firmata.png")
-                    msg.attach(part)
-            
-            # Invio SMTP Lineare senza blocchi nidificati interrotti
-            server = smtplib.SMTP("smtp.gmail.com", 587)
-            server.starttls()  
-            server.login(email_mittente, password_mittente)
-            server.sendmail(email_mittente, email_cliente, msg.as_string())
-            server.quit()
-            
-            st.success("✉️ Rapporto completo inviato correttamente via email al cliente!")
+                    <h2 style="color: #1A365D;">🛠️ NOVA SERVIMPIANTI</h2>
+                    <p>Buongiorno,<br/>In allegato trasmettiamo il <b>Rapporto di Intervento Tecnico</b> in formato PDF, firmato digitalmente tramite cellulare sul posto.</p>
