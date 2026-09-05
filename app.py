@@ -83,7 +83,7 @@ if st.session_state["codice_sms"] is not None and not st.session_state["sms_vali
         else:
             st.error("❌ Codice errato! Riprova.")
 
-# --- 4. LOGICA INVIO COPIA COMPLETA VIA EMAIL CORAZZATA ---
+# --- 4. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     import smtplib
     from email.mime.multipart import MIMEMultipart
@@ -92,7 +92,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
     
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc "  # <--- INSERISCI LA TUA PASSWORD QUI
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -100,7 +100,6 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
     msg.attach(MIMEText("Buongiorno,\nin allegato copia del rapporto ufficiale Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
     
-    # Protezione totale: se la mail fallisce, l'app non si blocca più!
     try:
         with open(allegato_path, "rb") as attachment:
             part = MIMEBase("application", "octet-stream")
@@ -115,7 +114,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         server.quit()
         st.success("✉️ Copia del report inviata correttamente all'email del cliente!")
     except Exception as e:
-        st.warning(f"⚠️ Nota: Dati registrati correttamente, ma la mail automatica non è partita. Verifica la password a 16 lettere di Google. Errore: {e}")
+        st.warning(f"⚠️ Nota: Dati registrati, ma e-mail non partita automaticamente. Errore: {e}")
 
 # --- 5. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma):
@@ -178,6 +177,8 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         df = pd.DataFrame([riga])
     df.to_excel(EXCEL_FILE, index=False)
 
-# --- 7. BOTTONE DI SALVATAGGIO TOTALMENTE PROTETTO ---
+# --- 7. BOTTONE DI SALVATAGGIO ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
+        st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
+    elif not st.session_state["sms_validato"]:
