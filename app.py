@@ -51,17 +51,12 @@ def invia_sms_otp_reale(numero_telefono, codice):
             numero_telefono = "+" + numero_telefono
         else:
             numero_telefono = "+39" + numero_telefono
-            
     testo_sms = f"Nova Servimpianti: Il tuo codice segreto di firma per l'intervento odierno e': {codice}"
-    
     try:
         response = requests.post('https://textbelt.com', {
-            'phone': numero_telefono,
-            'message': testo_sms,
-            'key': 'textbelt',
+            'phone': numero_telefono, 'message': testo_sms, 'key': 'textbelt'
         })
-        risultato = response.json()
-        return risultato.get("success", False)
+        return response.json().get("success", False)
     except:
         return False
 
@@ -75,16 +70,13 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
-        
         with st.spinner("Invio dell'SMS sul cellulare del cliente..."):
-            esito = invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
+            invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
             st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
             st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
 
-# Box inserimento codice dettato dal cliente
 if st.session_state["codice_sms"] is not None and not st.session_state["sms_validato"]:
     codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
-    
     if st.button("✅ VALIDA CODICE SMS"):
         if codice_inserito == st.session_state["codice_sms"]:
             st.session_state["sms_validato"] = True
@@ -99,15 +91,13 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email.mime.text import MIMEText
     from email.mime.base import MIMEBase
     from email import encoders
-    
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
-    
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
     msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
-    msg.attach(MIMEText("Buongiorno,\nin allegato inviamo copia del rapporto ufficiale dell'intervento tecnico Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
+    msg.attach(MIMEText("Buongiorno,\nin allegato copia del rapporto ufficiale Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
     try:
         with open(allegato_path, "rb") as attachment:
             part = MIMEBase("application", "octet-stream")
@@ -122,7 +112,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         server.quit()
         st.success("✉️ Copia del report inviata correttamente all'email del cliente!")
     except Exception as e:
-        st.warning(f"⚠️ Nota: Dati registrati, ma l'email di copia non e' partita: {e}")
+        st.warning(f"⚠️ Nota invio e-mail fallito: {e}")
 
 # --- 5. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma):
@@ -143,7 +133,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         story.append(Spacer(1, 15))
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     story.append(Spacer(1, 10))
-    story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente if email_cliente else 'N.D.'}<br/><b>Cellulare:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", body_style))
+    story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente}<br/><b>Cellulare:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", body_style))
     story.append(Spacer(1, 15))
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
@@ -167,7 +157,21 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         story.append(RLImage(foto_path, width=450, height=350))
     doc.build(story)
 
-# --- 6. BOTTONE DI SALVATAGGIO ---
+# --- 6. FUNZIONE GENERALE DI SCRITTURA DATI ---
+def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
+    riga = {
+        "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente,
+        "Marchio": marchio, "Matricola": matricola if matricola else "N.D.",
+        "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori,
+        "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma
+    }
+    if os.path.exists(EXCEL_FILE):
+        df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
+    else:
+        df = pd.DataFrame([riga])
+    df.to_excel(EXCEL_FILE, index=False)
+
+# --- 7. BOTTONE DI SALVATAGGIO ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
         st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
@@ -176,13 +180,3 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     else:
         with st.spinner("Registrazione dell'intervento in corso..."):
             try:
-                data_str = data_corrente.strftime("%d/%m/%Y")
-                stringa_firma = f"Firmato digitalmente tramite certificazione forte SMS OTP inviata al numero {cellulare_cliente} in data {data_str} con codice ID-{st.session_state['codice_sms']}"
-                
-                # Riga Excel spezzata su più righe per evitare troncamenti di GitHub
-                riga = {
-                    "Data": data_str,
-                    "Cliente": cliente,
-                    "Email": email_cliente,
-                    "Cellulare": cellulare_cliente,
-                    "Marchio": marchio,
