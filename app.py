@@ -34,7 +34,7 @@ with st.expander("📝 Stato della Riparazione", expanded=True):
 
 with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
     km = st.number_input("Kilometri percorsi (Km)", min_value=0, value=0, step=1)
-    ore_lavoro = st.number_input("Ore di lavoro impiegate", min_value=0.0, value=0.0, step=0.5)
+    ore_lavoro = st.number_input("Ore di lavoro impieagate", min_value=0.0, value=0.0, step=0.5)
     col1, col2 = st.columns(2)
     with col1:
         preventivo = st.radio("Richiedi Preventivo?", ["NO", "SI"])
@@ -92,12 +92,12 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
     
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # Ricordati di proteggere questa chiave in produzione!
+    password_mittente = "qiad bvqq ijaj mutc "  
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
-    msg['Subject'] = f"Rapporto Intervento Técnico - {nome_cliente}"
+    msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
     msg.attach(MIMEText("Buongiorno,\nin allegato copia del rapporto ufficiale Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
     
     try:
@@ -154,7 +154,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         if file_immagine is not None:
             story.append(Spacer(1, 25))
             story.append(Paragraph("<b>■ ALLEGATO FOTO SCHEDA</b>", section_heading))
-            # CORREZIONE: Convertiamo esplicitamente in RGB per evitare crash con ReportLab
             foto_img = Image.open(file_immagine).convert("RGB")
             foto_path = "temp_allegato.png"
             foto_img.thumbnail((500, 450))
@@ -165,12 +164,12 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         st.error(f"Errore generazione PDF: {e}")
 
 # --- 6. FUNZIONE GENERALE DI SCRITTURA DATI ---
-def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
+def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgent, stringa_firma):
     riga = {
         "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente,
         "Marchio": marchio, "Matricola": matricola if matricola else "N.D.",
         "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori,
-        "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma
+        "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgent, "Firma": stringa_firma
     }
     if os.path.exists(EXCEL_FILE):
         df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
@@ -182,3 +181,7 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     # 1. Controllo Campi Obbligatori
     if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
+        st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
+    
+    # 2. Controllo se l'SMS OTP è stato validato
+    elif not st.session_state["sms_validato"]:
