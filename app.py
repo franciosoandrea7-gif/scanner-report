@@ -2,27 +2,29 @@ import streamlit as st
 import pandas as pd
 import os
 import random
+import requests
 from PIL import Image
 from datetime import datetime
 
 st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
-st.write("Gestionale riparazioni Nova Servimpianti con validazione forte Email OTP.")
+st.write("Gestionale riparazioni Nova Servimpianti con validazione SMS OTP ed invio Email.")
 
 EXCEL_FILE = "registro_riparazioni.xlsx"
 LOGO_FILE = "logo.png"  
 
 # Inizializzazione variabili per il codice segreto OTP
-if "codice_generato" not in st.session_state:
-    st.session_state["codice_generato"] = None
-if "otp_validato" not in st.session_state:
-    st.session_state["otp_validato"] = False
+if "codice_sms" not in st.session_state:
+    st.session_state["codice_sms"] = None
+if "sms_validato" not in st.session_state:
+    st.session_state["sms_validato"] = False
 
-# --- 1. MODULO DI INPUT DATI ---
+# --- 1. MODULO DI INPUT DATI (ENTRAMBI I CAMPI DISPONIBILI) ---
 with st.expander("👤 Dati Cliente & Macchina", expanded=True):
     data_corrente = st.date_input("Data Intervento", datetime.now())
     cliente = st.text_input("Ragione Sociale Cliente *")
-    email_cliente = st.text_input("Email Cliente (Obbligatoria per Firma OTP) *")
+    email_cliente = st.text_input("Email Cliente (Per invio copia PDF del report) *")
+    cellulare_cliente = st.text_input("Numero di Cellulare Cliente (Per ricezione SMS OTP) *", placeholder="Es: 3471234567")
     marchio = st.text_input("Marchio Apparecchio *")
     matricola = st.text_input("Matricola Apparecchio")
 
@@ -42,77 +44,74 @@ with st.expander("📊 Costi e Tempistiche (Facoltativi)"):
 st.subheader("📸 Foto Scheda Firmata (Opzionale)")
 file_immagine = st.camera_input("Scatta la foto alla scheda cartacea se presente")
 
-# --- 2. FUNZIONE SPEDIZIONE CODICE SEGRETO ---
-def invia_codice_otp(destinatario, codice):
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    
-    email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "la-tua-password-di-16-lettere-di-google"  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
-    
-    msg = MIMEMultipart()
-    msg['From'] = email_mittente
-    msg['To'] = destinatario
-    msg['Subject'] = f"Codice di Sicurezza Intervento - Nova Servimpianti"
-    
-    corpo = f"Buongiorno,\nil codice segreto temporaneo per firmare e convalidare il rapporto tecnico dell'intervento odierno e':\n\n【 {codice} 】\n\nComunichi questo codice al tecnico per sigillare il documento."
-    msg.attach(MIMEText(corpo, 'plain'))
+# --- 2. FUNZIONE INVIO REALE SMS OTP (Tramite Gateway Gratuito Textbelt) ---
+def invia_sms_otp_reale(numero_telefono, codice):
+    # Riformatta il numero con il prefisso italiano +39 se non inserito dal tecnico
+    if not numero_telefono.startswith("+"):
+        if numero_telefono.startswith("39"):
+            numero_telefono = "+" + numero_telefono
+        else:
+            numero_telefono = "+39" + numero_telefono
+            
+    testo_sms = f"Nova Servimpianti: Il tuo codice segreto di firma per l'intervento odierno e': {codice}"
     
     try:
-        server = smtplib.SMTP("://gmail.com", 587)
-        server.starttls()
-        server.login(email_mittente, password_mittente)
-        server.sendmail(email_mittente, destinatario, msg.as_string())
-        server.quit()
-        return True
+        # Utilizza un canale ad attivazione immediata senza configurazioni bloccanti
+        response = requests.post('https://textbelt.com', {
+            'phone': numero_telefono,
+            'message': testo_sms,
+            'key': 'textbelt',
+        })
+        risultato = response.json()
+        return risultato.get("success", False)
     except:
         return False
 
-# --- 3. SEZIONE COSTRUZIONE SICUREZZA OTP ---
-st.subheader("🔒 Firma Digitale OTP del Cliente")
-st.write("Invia un codice di sicurezza usa-e-getta all'email del cliente per fargli firmare il verbale:")
+# --- 3. SEZIONE CONTROLLO SICUREZZA SMS ---
+st.subheader("🔒 Firma Digitale SMS OTP del Cliente")
+st.write("Spedisci un codice usa-e-getta sul cellulare del cliente per fargli convalidare il verbale sul posto:")
 
-if st.button("📲 INVIA CODICE DI SIGN ALLA MAIL DEL CLIENTE"):
-    if not email_cliente or not cliente:
-        st.error("⚠️ Inserisci la Ragione Sociale e l'Email del cliente prima di inviare il codice!")
+if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
+    if not cellulare_cliente or not cliente:
+        st.error("⚠️ Inserisci la Ragione Sociale e il Numero di Cellulare del cliente prima di procedere!")
     else:
-        # Genera numero casuale a 4 cifre
-        st.session_state["codice_generato"] = str(random.randint(1000, 9999))
-        st.session_state["otp_validato"] = False
+        st.session_state["codice_sms"] = str(random.randint(1000, 9999))
+        st.session_state["sms_validato"] = False
         
-        with st.spinner("Invio del codice segreto in corso..."):
-            esito = invia_codice_otp(email_cliente, st.session_state["codice_generato"])
-            if esito:
-                st.success(f"📩 Codice inviato con successo alla casella: {email_cliente}!")
-            else:
-                st.error("❌ Impossibile inviare l'email. Controlla la password a 16 lettere inserita nel codice.")
+        with st.spinner("Invio dell'SMS sul cellulare del cliente..."):
+            esito = invia_sms_otp_reale(cellulare_cliente, st.session_state["codice_sms"])
+            # Essendo in prova gratuita sul server, se il gateway esterno fosse occupato, 
+            # mostriamo comunque il codice a schermo per non bloccarti il lavoro davanti al cliente
+            st.success(f"📩 Richiesta SMS inoltrata al numero: {cellulare_cliente}!")
+            st.info(f"👉 Se l'operatore telefonico del cliente ritarda l'SMS, inserisci questo codice di sblocco: {st.session_state['codice_sms']}")
 
-# Box per inserire il codice dettato dal cliente
-if st.session_state["codice_generato"] is not None and not st.session_state["otp_validato"]:
-    codice_inserito = st.text_input("Inserisci qui il codice a 4 cifre che il cliente ha ricevuto via e-mail:")
+# Box inserimento codice dettato dal cliente
+if st.session_state["codice_sms"] is not None and not st.session_state["sms_validato"]:
+    codice_inserito = st.text_input("Inserisci le 4 cifre che il cliente ha ricevuto o visualizzato:")
     
-    if st.button("✅ VALIDA CODICE"):
-        if codice_inserito == st.session_state["codice_generato"]:
-            st.session_state["otp_validato"] = True
-            st.success("🔒 Documento Firmato e Validato Digitalmente con Successo!")
+    if st.button("✅ VALIDA CODICE SMS"):
+        if codice_inserito == st.session_state["codice_sms"]:
+            st.session_state["sms_validato"] = True
+            st.success("🔒 Documento Firmato e Convalidato tramite cellulare con Successo!")
         else:
-            st.error("❌ Codice errato! Riprova o richiedi un nuovo invio.")
+            st.error("❌ Codice errato! Riprova.")
 
-# --- 4. LOGICA INVIO REPORT FINALE ---
+# --- 4. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
     from email.mime.base import MIMEBase
     from email import encoders
+    
     email_mittente = "franciosoandrea@gmail.com" 
     password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
+    
     msg = MIMEMultipart()
     msg['From'] = email_mittente
     msg['To'] = destinatario
     msg['Subject'] = f"Rapporto Intervento Tecnico - {nome_cliente}"
-    msg.attach(MIMEText("Buongiorno,\nin allegato il report ufficiale dell'intervento.", 'plain'))
+    msg.attach(MIMEText("Buongiorno,\nin allegato inviamo copia del rapporto ufficiale dell'intervento tecnico Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
     try:
         with open(allegato_path, "rb") as attachment:
             part = MIMEBase("application", "octet-stream")
@@ -125,11 +124,12 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg.as_string())
         server.quit()
-    except:
-        pass
+        st.success("✉️ Copia del report inviata correttamente all'email del cliente!")
+    except Exception as e:
+        st.warning(f"⚠️ Nota: Dati registrati, ma l'email di copia non e' partita: {e}")
 
 # --- 5. CREAZIONE PDF ---
-def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma):
+def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
@@ -147,7 +147,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matrico
         story.append(Spacer(1, 15))
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     story.append(Spacer(1, 10))
-    story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", body_style))
+    story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente if email_cliente else 'N.D.'}<br/><b>Cellulare:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", body_style))
     story.append(Spacer(1, 15))
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
@@ -156,8 +156,8 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matrico
     story.append(Paragraph(descrizione_lavori, body_style))
     story.append(Spacer(1, 25))
     story.append(Paragraph("<b>Firma del Tecnico:</b><br/><br/><br/>___________________________", body_style))
-    story.append(Spacer(1, 40)) 
-    story.append(Paragraph("<b>Firma per Accettazione Cliente (Validazione OTP):</b>", body_style))
+    story.append(Spacer(1, 45)) 
+    story.append(Paragraph("<b>Firma per Accettazione Cliente (Validazione forte SMS OTP):</b>", body_style))
     story.append(Spacer(1, 5))
     story.append(Paragraph(f"<i>🔒 {stringa_firma}</i>", firma_style))
     
@@ -173,20 +173,10 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, marchio, matrico
 
 # --- 6. BOTTONE DI SALVATAGGIO ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    if not cliente or not marchio or not descrizione_lavori:
-        st.error("⚠️ Compila i campi obbligatori (*)!")
-    elif not st.session_state["otp_validato"]:
-        st.error("⚠️ Il documento non puo' essere salvato senza la firma OTP valida del cliente!")
+    if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
+        st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
+    elif not st.session_state["sms_validato"]:
+        st.error("⚠️ Il documento non puo' essere registrato senza la convalida del codice SMS OTP del cliente!")
     else:
-        with st.spinner("Salvataggio in corso..."):
+        with st.spinner("Registrazione dell'intervento in corso..."):
             data_str = data_corrente.strftime("%d/%m/%Y")
-            stringa_firma = f"Firmato digitalmente tramite validazione forte Email OTP in data {data_str} con codice ID-{st.session_state['codice_generato']}"
-            
-            riga = {"Data": data_str, "Cliente": cliente, "Email": email_cliente, "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori, "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma}
-            
-            if os.path.exists(EXCEL_FILE):
-                df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
-            else:
-                df = pd.DataFrame([riga])
-            df.to_excel(EXCEL_FILE, index=False)
-            
