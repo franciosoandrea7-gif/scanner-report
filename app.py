@@ -6,7 +6,7 @@ import requests
 from PIL import Image
 from datetime import datetime
 
-st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="with st.expander")
+st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
 st.write("Gestionale riparazioni Nova Servimpianti con validazione SMS OTP ed invio Email.")
 
