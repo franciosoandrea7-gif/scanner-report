@@ -101,7 +101,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
     
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -179,4 +179,10 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
                 data_str = data_corrente.strftime("%d/%m/%Y")
                 stringa_firma = f"Firmato digitalmente tramite certificazione forte SMS OTP inviata al numero {cellulare_cliente} in data {data_str} con codice ID-{st.session_state['codice_sms']}"
                 
-                riga = {"Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori, "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma}
+                # Riga Excel spezzata su più righe per evitare troncamenti di GitHub
+                riga = {
+                    "Data": data_str,
+                    "Cliente": cliente,
+                    "Email": email_cliente,
+                    "Cellulare": cellulare_cliente,
+                    "Marchio": marchio,
