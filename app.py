@@ -92,7 +92,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     from email import encoders
     
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # <--- INSERISCI LA TUA PASSWORD QUI
+    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -177,8 +177,10 @@ def registra_dati_intervento(data_str, cliente, email_cliente, cellulare_cliente
         df = pd.DataFrame([riga])
     df.to_excel(EXCEL_FILE, index=False)
 
-# --- 7. BOTTONE DI SALVATAGGIO ---
+# --- 7. BOTTONE DI SALVATAGGIO FUNZIONALE E LINEARE ---
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
+    # Controllo Campi Obbligatori
     if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
         st.error("⚠️ Compila tutti i campi obbligatori (*) contrassegnati, inclusi Email e Cellulare per l'invio!")
-    elif not st.session_state["sms_validato"]:
+    
+    # Controllo Validazione SMS
