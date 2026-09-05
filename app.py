@@ -18,19 +18,21 @@ st.write("Gestionale riparazioni Nova Servimpianti con validazione SMS OTP ed in
 EXCEL_FILE = "registro_riparazioni.xlsx"
 LOGO_FILE = "logo.png"  
 
-# Inizializzazione stati di sessione
+# --- INIZIALIZZAZIONE STATI DI SESSIONE PER DATI PERSISTENTI ---
 if "codice_sms" not in st.session_state:
     st.session_state["codice_sms"] = None
 if "sms_validato" not in st.session_state:
     st.session_state["sms_validato"] = False
+if "ultimo_pdf" not in st.session_state:
+    st.session_state["ultimo_pdf"] = None
+if "mostra_download" not in st.session_state:
+    st.session_state["mostra_download"] = False
 
 # --- 0. VISUALIZZAZIONE STORICO LAVORI SVOLTI ---
 with st.expander("📚 Visualizza Archivio Storico Lavori Svolti (Excel)"):
     if os.path.exists(EXCEL_FILE):
         df_storico = pd.read_excel(EXCEL_FILE)
         st.dataframe(df_storico)
-        with open(EXCEL_FILE, "rb") as f_excel:
-            st.download_button(label="📥 Scarica Intero Registro Excel (.xlsx)", data=f_excel, file_name=EXCEL_FILE, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     else:
         st.info("ℹ️ L'archivio è attualmente vuoto. Diventerà visibile non appena registrerai il primo rapporto.")
 
@@ -64,6 +66,7 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
+        st.session_state["mostra_download"] = False
         st.success("📩 Richiesta SMS dell'intervento elaborata con successo!")
 
 if st.session_state["codice_sms"] is not None:
@@ -74,12 +77,13 @@ if st.session_state["codice_sms"] is not None:
             if codice_inserito == st.session_state["codice_sms"]:
                 st.session_state["sms_validato"] = True
                 st.success("🔒 Documento Convalidato e Firmato! Procedi in fondo per il salvataggio.")
+                st.rerun()
             else:
                 st.error("❌ Codice errato! Controlla e riprova.")
     else:
         st.success("🔒 Documento già Convalidato con Successo!")
 
-# --- 3. BOTTONE FINALE (ECCEL + PDF + EMAIL SMTP GMAIL) ---
+# --- 3. BOTTONE FINALE ---
 st.write("---")
 st.subheader("💾 Operazione Finale")
 
@@ -91,13 +95,14 @@ if tasto_registra:
     elif not st.session_state["sms_validato"]:
         st.error("⚠️ Attenzione! Il cliente deve prima convalidare il codice SMS per apporre la firma!")
     else:
-        with st.spinner("Elaborazione in corso: Aggiornamento registro, creazione PDF e invio email..."):
+        with st.spinner("Elaborazione in corso... Generazione file in memoria..."):
             
             data_str = data_corrente.strftime("%d/%m/%Y")
-            stringa_firma = f"Firmato via SMS OTP il {data_str} dal numero {cellulare_cliente} (Codice di convalida: {st.session_state['codice_sms']})"
+            stringa_firma = f"Firmato via SMS OTP il {data_str} dal numero {cellulare_cliente} (Codice: {st.session_state['codice_sms']})"
             pdf_filename = f"Rapporto_{cliente.replace(' ', '_')}_{data_corrente.strftime('%Y%m%d')}.pdf"
+            st.session_state["ultimo_pdf"] = pdf_filename
 
-            # 1️⃣ OPERAZIONE EXCEL: Registro Storico Generale
+            # 1️⃣ REGISTRAZIONE DATI EXCEL PERSISTENTE
             riga = {
                 "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, 
                 "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", 
@@ -107,9 +112,8 @@ if tasto_registra:
             df_vecchio = pd.read_excel(EXCEL_FILE) if os.path.exists(EXCEL_FILE) else pd.DataFrame()
             df_nuovo = pd.concat([df_vecchio, pd.DataFrame([riga])], ignore_index=True)
             df_nuovo.to_excel(EXCEL_FILE, index=False)
-            st.success(f"🎯 Intervento memorizzato nell'archivio storico Excel!")
 
-            # 2️⃣ OPERAZIONE PDF: Generazione del file singolo dell'intervento odierno
+            # 2️⃣ GENERAZIONE DEL FILE PDF CON REPORTLAB
             from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib import colors
@@ -154,22 +158,24 @@ if tasto_registra:
                     story.append(RLImage(foto_path, width=420, height=320))
                 
                 doc.build(story)
-                st.success("📄 Documento PDF ufficiale dell'intervento generato!")
             except Exception as pdf_err:
-                st.error(f"Errore creazione PDF: {pdf_err}")
+                st.error(f"Errore tecnico durante la scrittura fisica del PDF: {pdf_err}")
 
-            # 3️⃣ OPERAZIONE EMAIL: Invio del messaggio SMTP con il PDF allegato
+            # 3️⃣ INVIO EMAIL SMTP GMAIL (ISOLATO)
             email_mittente = "franciosoandrea@gmail.com" 
             password_mittente = "qiad bvqq ijaj mutc "  
             
-            msg = MIMEMultipart()
-            msg['From'] = email_mittente
-            msg['To'] = email_cliente
-            msg['Subject'] = f"Rapporto Ufficiale Intervento Técnico - {cliente}"
-            
-            testo_email = f"Nova Servimpianti\n\nBuongiorno,\nin allegato inviamo il Rapporto di Intervento Tecnico ufficiale relativo ai lavori eseguiti in data odierna presso la vostra sede.\n\nIl documento e' stato firmato elettronicamente sul posto tramite codice di validazione SMS OTP.\n\nCordiali Saluti\nNova Servimpianti."
-            msg.attach(MIMEText(testo_email, 'plain'))
-            
-            if os.path.exists(pdf_filename):
-                with open(pdf_filename, "rb") as attachment:
-                    part = MIMEBase("application", "octet-stream")
+            try:
+                msg = MIMEMultipart()
+                msg['From'] = email_mittente
+                msg['To'] = email_cliente
+                msg['Subject'] = f"Rapporto Ufficiale Intervento Tecnico - {cliente}"
+                
+                testo_email = f"Nova Servimpianti\n\nBuongiorno,\nin allegato inviamo il Rapporto di Intervento Tecnico ufficiale relativo ai lavori eseguiti in data odierna presso la vostra sede.\n\nIl documento e' stato firmato elettronicamente sul posto tramite codice di validazione SMS OTP.\n\nCordiali Saluti\nNova Servimpianti."
+                msg.attach(MIMEText(testo_email, 'plain'))
+                
+                if os.path.exists(pdf_filename):
+                    with open(pdf_filename, "rb") as attachment:
+                        part = MIMEBase("application", "octet-stream")
+                        part.set_payload(attachment.read())
+                        encoders.encode_base64(part)
