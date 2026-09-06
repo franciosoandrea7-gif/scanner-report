@@ -87,99 +87,105 @@ if st.session_state["codice_sms"] is not None:
     else:
         st.success("🔒 Documento già Convalidato con Successo!")
 
-# --- 3. BOTTONE FINALE ---
-st.write("---")
-st.subheader("💾 Operazione Finale")
+# --- 3. SEZIONE SALVATAGGIO, CREAZIONE PDF E INVIO EMAIL (NUOVA SEZIONE AGGIUNTA CORRETTA) ---
+st.subheader("💾 Registrazione e Invio")
 
-tasto_registra = st.button("💾 REGISTRA E GENERA REPORT COMPLETO", type="primary")
-
-if tasto_registra:
-    if not cliente or not marchio or not descrizione_lavori or not cellulare_cliente or not email_cliente:
-        st.error("⚠️ Compila tutti i campi obbligatori contrassegnati con l'asterisco (*)")
+if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
+    if not cliente or not marchio or not descrizione_lavori or not email_cliente:
+        st.error("⚠️ Compila tutti i campi obbligatori (*) prima di procedere!")
     elif not st.session_state["sms_validato"]:
-        st.error("⚠️ Attenzione! Il cliente deve prima convalidare il codice SMS per apporre la firma!")
+        st.error("⚠️ Non puoi salvare il report senza prima aver validato il codice SMS OTP del cliente!")
     else:
-        with st.spinner("Elaborazione in corso... Generazione file in memoria..."):
-            
-            data_str = data_corrente.strftime("%d/%m/%Y")
-            stringa_firma = f"Firmato via SMS OTP il {data_str} dal numero {cellulare_cliente} (Codice: {st.session_state['codice_sms']})"
-            pdf_filename = f"Rapporto_{cliente.replace(' ', '_')}_{data_corrente.strftime('%Y%m%d')}.pdf"
-            st.session_state["ultimo_pdf"] = pdf_filename
-
-            # 1️⃣ REGISTRAZIONE DATI EXCEL
-            riga = {
-                "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente, 
-                "Marchio": marchio, "Matricola": matricola if matricola else "N.D.", 
-                "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori, 
-                "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma
-            }
-            df_vecchio = pd.read_excel(EXCEL_FILE) if os.path.exists(EXCEL_FILE) else pd.DataFrame()
+        st.write("🔄 Elaborazione e scrittura documenti in corso...")
+        data_str = data_corrente.strftime("%d/%m/%Y")
+        stringa_firma = f"Firmato digitalmente tramite certificazione forte SMS OTP inviata al numero {cellulare_cliente} in data {data_str} con codice ID-{st.session_state['codice_sms']}"
+        
+        # A) SALVATAGGIO CORRETTO IN EXCEL
+        riga = {
+            "Data": data_str, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente,
+            "Marchio": marchio, "Matricola": matricola if matricola else "N.D.",
+            "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori,
+            "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma": stringa_firma
+        }
+        
+        if os.path.exists(EXCEL_FILE):
+            df_vecchio = pd.read_excel(EXCEL_FILE)
             df_nuovo = pd.concat([df_vecchio, pd.DataFrame([riga])], ignore_index=True)
-            df_nuovo.to_excel(EXCEL_FILE, index=False)
-
-            # 2️⃣ GENERAZIONE DEL FILE PDF CON REPORTLAB
-            doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
-            styles = getSampleStyleSheet()
-            title_style = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
-            section_heading = ParagraphStyle('T2', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
-            body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
-            firma_style = ParagraphStyle('T4', parent=styles['Normal'], fontSize=9, leading=14, textColor=colors.HexColor("#4A5568"))
-            
-            story = []
-            if os.path.exists(LOGO_FILE):
-                story.append(RLImage(LOGO_FILE, width=530, height=75))
-                story.append(Spacer(1, 15))
-            
-            story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
-            story.append(Spacer(1, 10))
-            story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente}<br/><b>Cellulare:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore Lavoro:</b> {ore_lavoro}<br/><b>Richiesto Preventivo:</b> {preventivo} | <b>Intervento Urgente:</b> {urgente}", body_style))
+        else:
+            df_nuovo = pd.DataFrame([riga])
+        df_nuovo.to_excel(EXCEL_FILE, index=False)
+        
+        # B) GENERAZIONE PDF PROFESSIONALE
+        c_pulito = cliente.replace(" ", "_").replace("/", "_")
+        pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
+        st.session_state["ultimo_pdf"] = pdf_filename
+        
+        doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
+        section_heading = ParagraphStyle('T2', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
+        body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
+        firma_style = ParagraphStyle('T4', parent=styles['Normal'], fontSize=9, leading=14, textColor=colors.HexColor("#4A5568"))
+        
+        story = []
+        if os.path.exists(LOGO_FILE):
+            story.append(RLImage(LOGO_FILE, width=530, height=75))
             story.append(Spacer(1, 15))
-            story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
-            story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
-            story.append(Spacer(1, 10))
-            story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
-            story.append(Paragraph(descrizione_lavori, body_style))
+            
+        story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(f"<b>Data Intervento:</b> {data_str}<br/><b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente}<br/><b>Cellulare:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio}<br/><b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} Km | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", body_style))
+        story.append(Spacer(1, 15))
+        story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
+        story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
+        story.append(Spacer(1, 10))
+        story.append(Paragraph("<b>■ DETTAGLIO LAVORI ESEGUITI</b>", section_heading))
+        story.append(Paragraph(descrizione_lavori, body_style))
+        story.append(Spacer(1, 25))
+        story.append(Paragraph("<b>Firma del Tecnico:</b><br/><br/><br/>___________________________", body_style))
+        story.append(Spacer(1, 45)) 
+        story.append(Paragraph("<b>Firma per Accettazione Cliente (Validazione forte SMS OTP):</b>", body_style))
+        story.append(Spacer(1, 5))
+        story.append(Paragraph(f"<i>🔒 {stringa_firma}</i>", firma_style))
+        
+        if file_immagine is not None:
             story.append(Spacer(1, 25))
-            story.append(Paragraph("<b>Firma del Tecnico:</b><br/><br/><br/>___________________________", body_style))
-            story.append(Spacer(1, 35)) 
-            story.append(Paragraph("<b>Firma per Accettazione Cliente (Validazione SMS OTP):</b>", body_style))
-            story.append(Spacer(1, 5))
-            story.append(Paragraph(f"<i>🔒 {stringa_firma}</i>", firma_style))
+            story.append(Paragraph("<b>■ ALLEGATO FOTO SCHEDA</b>", section_heading))
+            foto_img = Image.open(file_immagine)
+            foto_path = "temp_allegato.png"
+            foto_img.thumbnail((500, 450))
+            foto_img.save(foto_path)
+            story.append(RLImage(foto_path, width=450, height=350))
             
-            if file_immagine is not None:
-                foto_img = Image.open(file_immagine).convert("RGB")
-                foto_path = "temp_allegato_pdf.png"
-                foto_img.thumbnail((500, 450))
-                foto_img.save(foto_path)
-                story.append(Spacer(1, 20))
-                story.append(Paragraph("<b>■ ALLEGATO FOTO INTERVENTO</b>", section_heading))
-                story.append(RLImage(foto_path, width=420, height=320))
-            
-            doc.build(story)
-
-            # 3️⃣ INVIO EMAIL SMTP GMAIL
-            email_mittente = "franciosoandrea@gmail.com" 
-            password_mittente = "qiad bvqq ijaj mutc "  
-            
-            msg = MIMEMultipart()
-            msg['From'] = email_mittente
-            msg['To'] = email_cliente
-            msg['Subject'] = f"Rapporto Ufficiale Intervento Tecnico - {cliente}"
-            
-            testo_email = f"Nova Servimpianti\n\nBuongiorno,\nin allegato inviamo il Rapporto di Intervento Tecnico ufficiale relativo ai lavori eseguiti in data odierna presso la vostra sede.\n\nIl documento e' stato firmato elettronicamente sul posto tramite codice di validazione SMS OTP.\n\nCordiali Saluti\nNova Servimpianti."
-            msg.attach(MIMEText(testo_email, 'plain'))
-            
-            if os.path.exists(pdf_filename):
-                with open(pdf_filename, "rb") as attachment:
-                    part = MIMEBase("application", "octet-stream")
-                    part.set_payload(attachment.read())
-                    encoders.encode_base64(part)
-                    part.add_header("Content-Disposition", f"attachment; filename= {pdf_filename}")
-                    msg.attach(part)
-            
-            server = smtplib.SMTP("smtpgmail.com", 587)
-            server.starttls()  
+        doc.build(story)
+        st.success("🎉 Intervento registrato correttamente nel database!")
+        st.session_state["mostra_download"] = True
+        
+        # C) INVIO AUTOMATICO EMAIL VIA GMAIL PROTETTO
+        email_mittente = "franciosoandrea@gmail.com" 
+        password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD A 16 LETTERE DI GOOGLE QUI!
+        
+        msg = MIMEMultipart()
+        msg['From'] = email_mittente
+        msg['To'] = email_cliente
+        msg['Subject'] = f"Rapporto Intervento Tecnico - {cliente}"
+        msg.attach(MIMEText("Buongiorno,\nin allegato inviamo copia del rapporto ufficiale Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
+        
+        try:
+            with open(pdf_filename, "rb") as attachment:
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(attachment.read())
+                encoders.encode_base64(part)
+                part.add_header("Content-Disposition", f"attachment; filename= {pdf_filename}")
+                msg.attach(part)
+                
+            server = smtplib.SMTP("smtp.gmail.com", 587)
+            server.starttls()
             server.login(email_mittente, password_mittente)
             server.sendmail(email_mittente, email_cliente, msg.as_string())
             server.quit()
+            st.success("✉️ Copia del report inviata con successo all'email del cliente!")
+        except Exception as e:
+            st.warning(f"⚠️ Nota: File salvati, ma l'email non è partita automaticamente. Errore: {e}")
 
+# --- 4. VISUALIZZAZIONE PULSANTI DOWNLOAD FISSI DOPO IL SALVATAGGIO ---
