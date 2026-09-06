@@ -90,7 +90,10 @@ file_immagine = st.camera_input("Scatta la foto alla scheda")
 # --- 2. GESTIONE SMS ---
 st.subheader("🔒 Firma Digitale SMS Cliente")
 if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
-    if not cellulare_cliente or not cliente:
+    # CONTROLLO BLOCANTE: Il tecnico si è identificato?
+    if not tecnico_autorizzato:
+        st.error("⛔ AZIONE BLOCCATA: Devi prima selezionare il tuo nome Tecnico e inserire il PIN corretto in alto!")
+    elif not cellulare_cliente or not cliente:
         st.error("⚠️ Inserisci Cliente e Cellulare!")
     else:
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
@@ -100,12 +103,10 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         # --- CONNESSIONE SICURA A TWILIO TRAMITE STREAMLIT SECRETS ---
         from twilio.rest import Client
         
-        # Recuperiamo le chiavi in modo sicuro senza scriverle in chiaro nel codice
         ACCOUNT_SID = st.secrets["TWILIO_ACCOUNT_SID"]
         AUTH_TOKEN = st.secrets["TWILIO_AUTH_TOKEN"]
         NUMERO_TWILIO = st.secrets["TWILIO_NUMBER"]
         
-        # Gestione automatica del prefisso internazionale italiano (+39)
         num_destinatario = cellulare_cliente
         if not num_destinatario.startswith("+"):
             if num_destinatario.startswith("39"):
@@ -125,7 +126,7 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
 if st.session_state["codice_sms"] is not None:
     st.info(f"👉 CODICE DI VALIDAZIONE D'EMERGENZA: {st.session_state['codice_sms']}")
     if not st.session_state["sms_validato"]:
-        codice_inserito = st.text_input("Inserisci le 4 cifre:")
+        codice_inserito = st.text_input("Inserisci le 4 cifre:", key="codice_verifica_sms")
         if st.button("✅ VALIDA CODICE SMS"):
             if codice_inserito == st.session_state["codice_sms"]:
                 st.session_state["sms_validato"] = True
@@ -135,26 +136,12 @@ if st.session_state["codice_sms"] is not None:
                 st.error("❌ Codice errato!")
     else:
         st.success("🔒 Convalidato con Successo!")
-
-
-if st.session_state["codice_sms"] is not None:
-    st.info(f"👉 CODICE DI VALIDAZIONE D'EMERGENZA: {st.session_state['codice_sms']}")
-    if not st.session_state["sms_validato"]:
-        codice_inserito = st.text_input("Inserisci le 4 cifre:")
-        if st.button("✅ VALIDA CODICE SMS"):
-            if codice_inserito == st.session_state["codice_sms"]:
-                st.session_state["sms_validato"] = True
-                st.success("🔒 Validato!")
-                st.rerun()
-            else:
-                st.error("❌ Codice errato!")
-    else:
-        st.success("🔒 Convalidato con Successo!")
-
+        
 # --- 3. LOGICA INVIO COPIA COMPLETA VIA EMAIL CON DOPPIO ALLEGATO PER TE ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # <--- INSERISCI LA TUA PASSWORD DI GOOGLE QUI!
+    # RECUPERO SICURO DELLA PASSWORD TRAMITE STREAMLIT SECRETS
+    password_mittente = st.secrets["GMAIL_PASSWORD"]
     
     # 1. EMAIL PER IL CLIENTE (Solo PDF)
     msg_cli = MIMEMultipart()
@@ -237,7 +224,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
     
-    story.append(Paragraph("<b>■ LAVORI ESEIUTI</b>", section_heading))
+    story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     story.append(Spacer(1, 25))
     
@@ -281,7 +268,8 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
     else:
         df_nuovo = pd.DataFrame([riga])
         
-    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?"]
+    # AGGIUNTA LA COLONNA "Firma Cliente" PER NON PERDERE IL DATO NEL FILE FINALE
+    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente"]
     df_nuovo = df_nuovo.reindex(columns=colonne_ordinate)
     
     # Motore di scrittura avanzato con allargamento automatico colonne
@@ -307,9 +295,9 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori or not email_cliente:
         st.error("⚠️ Compila i campi obbligatori (*)!")
     elif file_immagine is None:
-        st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattare la foto alla targa o alla scheda macchina!")
+        st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattato la foto alla targa o alla scheda macchina!")
     elif not tecnico_autorizzato:
-        st.error("⚠️ Il Tecnico deve inserire un PIN valido per procedere!")
+        st.error("⚠️ Il Tecnico deve inserire un PIN valido in alto per procedere!")
     elif not st.session_state["sms_validato"]:
         st.error("⚠️ Valida prima il codice SMS del cliente!")
     else:
@@ -323,7 +311,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
         st.session_state["ultimo_pdf"] = pdf_filename
         
-        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma_cli, firma_tecnico_str)
+        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma_cli, tecnico_selezionato)
         
         st.success("🎉 Registrato correttamente!")
         st.session_state["mostra_download"] = True
