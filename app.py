@@ -215,7 +215,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     
     story = []
     if os.path.exists(LOGO_FILE):
-        story.append(RLImage(LOGO_FILE, width=530, height=75))
+        story.append(RLImage(LOGO_FILE, width=545, height=90))
         story.append(Spacer(1, 15))
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     story.append(Paragraph(f"<b>Data:</b> {data_str} | <b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente} | <b>Cell:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio} | <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", body_style))
