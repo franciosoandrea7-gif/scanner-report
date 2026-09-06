@@ -202,9 +202,15 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
 st.subheader("💾 Registrazione")
+
+# Triangolo giallo di avviso ben visibile sul telefono/iPad prima del tasto
+st.warning("⚠️ ATTENZIONE TECNICO: La foto della scheda o della targa macchina è OBBLIGATORIA per poter chiudere l'intervento!")
+
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori or not email_cliente:
         st.error("⚠️ Compila i campi obbligatori (*)!")
+    elif file_immagine is None:
+        st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattato la foto alla targa o alla scheda macchina!")
     elif not tecnico_autorizzato:
         st.error("⚠️ Il Tecnico deve inserire un PIN valido per procedere!")
     elif not st.session_state["sms_validato"]:
