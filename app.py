@@ -216,7 +216,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         story.append(RLImage("temp_allegato.png", width=450, height=350))
     doc.build(story)
 
-# --- 5. FUNZIONE GENERALE DI SCRITTURA DATI ---
+# --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON AUTOFIT COLONNE ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
     riga = {
         "Data Intervento": data_str,
@@ -243,7 +243,20 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         
     colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?"]
     df_nuovo = df_nuovo.reindex(columns=colonne_ordinate)
-    df_nuovo.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+    
+    # Motore di scrittura avanzato con allargamento automatico colonne
+    with pd.ExcelWriter(EXCEL_FILE, engine='openpyxl') as writer:
+        df_nuovo.to_excel(writer, index=False)
+        worksheet = writer.sheets['Sheet1']
+        # Ciclo per calcolare la lunghezza del testo in ogni colonna e allargarla
+        for col in worksheet.columns:
+            max_len = 0
+            col_letter = col[0].column_letter # Prende la lettera della colonna (A, B, C...)
+            for cell in col:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            # Imposta la larghezza con un margine extra di 4 spazi per dare aria alla cella
+            worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
 st.subheader("💾 Registrazione")
