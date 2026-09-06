@@ -151,7 +151,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         st.session_state["mostra_download"] = True
         
         # C) EMAIL
-        email_mittente = "franciosoandrea7@gmail.com" 
+        email_mittente = "franciosoandrea@gmail.com" 
         password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD QUI (RIGA 136)
         
         msg = MIMEMultipart()
