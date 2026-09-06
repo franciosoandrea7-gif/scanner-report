@@ -198,7 +198,7 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
     else:
         df = pd.DataFrame([riga])
-    df.to_excel(EXCEL_FILE, index=False)
+     df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
 st.subheader("💾 Registrazione")
