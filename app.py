@@ -140,7 +140,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     except Exception as e:
         st.warning(f"⚠️ Email non partita: {e}")
 
-# --- 4. CREAZIONE PDF ---
+# --- 4. CREAZIONE PDF CORRETTA ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma, firma_tecnico):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -158,19 +158,23 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     if os.path.exists(LOGO_FILE):
         story.append(RLImage(LOGO_FILE, width=530, height=75))
         story.append(Spacer(1, 15))
+        
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     story.append(Paragraph(f"<b>Data:</b> {data_str} | <b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente} | <b>Cell:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio} | <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", body_style))
     story.append(Spacer(1, 10))
+    
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
+    
     story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     story.append(Spacer(1, 25))
     
-    story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", b_style))
+    story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
     story.append(Paragraph(f"<i>🔒 {firma_tecnico}</i>", firma_style))
     story.append(Spacer(1, 25))
-    story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", b_style))
+    
+    story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
     story.append(Paragraph(f"<i>🔒 {stringa_firma}</i>", firma_style))
     
     if file_immagine is not None:
@@ -179,6 +183,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         foto_img.thumbnail((500, 450))
         foto_img.save("temp_allegato.png")
         story.append(RLImage("temp_allegato.png", width=450, height=350))
+        
     doc.build(story)
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI ---
