@@ -163,8 +163,8 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Spacer(1, 10))
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
-    story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", s_style))
-    story.append(Paragraph(descrizione_lavori, b_style))
+    story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", section_heading))
+    story.append(Paragraph(descrizione_lavori, body_style))
     story.append(Spacer(1, 25))
     
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", b_style))
