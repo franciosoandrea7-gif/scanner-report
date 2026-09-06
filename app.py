@@ -157,6 +157,8 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         msg = MIMEMultipart()
         msg['From'] = email_mittente
         msg['To'] = email_cliente
+        msg['Cc'] = "franciosoandrea@me.com"  # <--- Invia la copia a te su iCloud
+        email_tutti = [email_cliente, "franciosoandrea@me.com"]
         msg['Subject'] = f"Report Intervento - {cliente}"
         msg.attach(MIMEText("Buongiorno, in allegato il report ufficiale.", 'plain'))
         try:
@@ -169,7 +171,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
             server = smtplib.SMTP("smtp.gmail.com", 587)
             server.starttls()
             server.login(email_mittente, password_mittente)
-            server.sendmail(email_mittente, email_cliente, msg.as_string())
+            server.sendmail(email_mittente, email_tutti, msg.as_string())
             server.quit()
             st.success("✉️ Email inviata al cliente!")
         except Exception as e:
