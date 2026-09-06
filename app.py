@@ -96,10 +96,34 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         st.session_state["codice_sms"] = str(random.randint(1000, 9999))
         st.session_state["sms_validato"] = False
         st.session_state["mostra_download"] = False
-        st.success("📩 Richiesta SMS elaborata!")
+        
+        # --- CONNESSIONE SICURA A TWILIO TRAMITE STREAMLIT SECRETS ---
+        from twilio.rest import Client
+        
+        # Recuperiamo le chiavi in modo sicuro senza scriverle in chiaro nel codice
+        ACCOUNT_SID = st.secrets["TWILIO_ACCOUNT_SID"]
+        AUTH_TOKEN = st.secrets["TWILIO_AUTH_TOKEN"]
+        NUMERO_TWILIO = st.secrets["TWILIO_NUMBER"]
+        
+        # Gestione automatica del prefisso internazionale italiano (+39)
+        num_destinatario = cellulare_cliente
+        if not num_destinatario.startswith("+"):
+            if num_destinatario.startswith("39"):
+                num_destinatario = "+" + num_destinatario
+            else:
+                num_destinatario = "+39" + num_destinatario
+                
+        testo_messaggio = f"Nova Servimpianti: Il tuo codice segreto di firma per l'intervento odierno e': {st.session_state['codice_sms']}"
+        
+        try:
+            twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
+            twilio_client.messages.create(body=testo_messaggio, from_=NUMERO_TWILIO, to=num_destinatario)
+            st.success("📩 SMS inviato al telefono del cliente con successo!")
+        except Exception as e:
+            st.warning(f"⚠️ Nota: Richiesta elaborata. Se l'SMS non arriva, usa il codice mostrato qui sotto. Errore: {e}")
 
 if st.session_state["codice_sms"] is not None:
-    st.info(f"👉 CODICE DI VALIDAZIONE: {st.session_state['codice_sms']}")
+    st.info(f"👉 CODICE DI VALIDAZIONE D'EMERGENZA: {st.session_state['codice_sms']}")
     if not st.session_state["sms_validato"]:
         codice_inserito = st.text_input("Inserisci le 4 cifre:")
         if st.button("✅ VALIDA CODICE SMS"):
@@ -111,6 +135,22 @@ if st.session_state["codice_sms"] is not None:
                 st.error("❌ Codice errato!")
     else:
         st.success("🔒 Convalidato con Successo!")
+
+
+if st.session_state["codice_sms"] is not None:
+    st.info(f"👉 CODICE DI VALIDAZIONE D'EMERGENZA: {st.session_state['codice_sms']}")
+    if not st.session_state["sms_validato"]:
+        codice_inserito = st.text_input("Inserisci le 4 cifre:")
+        if st.button("✅ VALIDA CODICE SMS"):
+            if codice_inserito == st.session_state["codice_sms"]:
+                st.session_state["sms_validato"] = True
+                st.success("🔒 Validato!")
+                st.rerun()
+            else:
+                st.error("❌ Codice errato!")
+    else:
+        st.success("🔒 Convalidato con Successo!")
+
 # --- 3. LOGICA INVIO COPIA COMPLETA VIA EMAIL CON DOPPIO ALLEGATO PER TE ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
