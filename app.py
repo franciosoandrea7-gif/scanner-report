@@ -111,34 +111,66 @@ if st.session_state["codice_sms"] is not None:
                 st.error("❌ Codice errato!")
     else:
         st.success("🔒 Convalidato con Successo!")
-# --- 3. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
+# --- 3. LOGICA INVIO COPIA COMPLETA VIA EMAIL CON DOPPIO ALLEGATO PER TE ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
+    password_mittente = "la-tua-password-di-16-lettere-di-google"  # <--- INSERISCI LA TUA PASSWORD DI GOOGLE QUI!
     
-    msg = MIMEMultipart()
-    msg['From'] = email_mittente
-    msg['To'] = destinatario
-    msg['Cc'] = "franciosoandrea@me.com"
-    msg['Subject'] = f"Report Intervento - {nome_cliente}"
-    msg.attach(MIMEText("Buongiorno, in allegato copia del rapporto ufficiale Nova Servimpianti.", 'plain'))
+    # 1. EMAIL PER IL CLIENTE (Solo PDF)
+    msg_cli = MIMEMultipart()
+    msg_cli['From'] = email_mittente
+    msg_cli['To'] = destinatario
+    msg_cli['Subject'] = f"Report Intervento - {nome_cliente}"
+    msg_cli.attach(MIMEText("Buongiorno, in allegato copia del rapporto ufficiale Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
     
-    elenco_destinatari = [destinatario, "franciosoandrea@me.com"]
+    # 2. EMAIL PER TE SU ICLOUD (PDF + EXCEL AGGIORNATO)
+    msg_teco = MIMEMultipart()
+    msg_teco['From'] = email_mittente
+    msg_teco['To'] = "franciosoandrea@me.com"
+    msg_teco['Subject'] = f"Nova Servimpianti - Backup Intervento: {nome_cliente}"
+    msg_teco.attach(MIMEText(f"Rapporto registrato correttamente nel database.\nIn allegato trovi il PDF dell'intervento e il file Excel Generale aggiornato.", 'plain'))
+    
     try:
-        with open(allegato_path, "rb") as attachment:
-            part = MIMEBase("application", "octet-stream")
-            part.set_payload(attachment.read())
-            encoders.encode_base64(part)
-            part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
-            msg.attach(part)
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        # Allega il PDF ad entrambe le email
+        with open(allegato_path, "rb") as att_pdf:
+            part_pdf = MIMEBase("application", "octet-stream")
+            part_pdf.set_payload(att_pdf.read())
+            encoders.encode_base64(part_pdf)
+            part_pdf.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
+            msg_cli.attach(part_pdf)
+            
+            # Creiamo una copia separata del payload del PDF per la tua email
+            part_pdf_teco = MIMEBase("application", "octet-stream")
+            att_pdf.seek(0)
+            part_pdf_teco.set_payload(att_pdf.read())
+            encoders.encode_base64(part_pdf_teco)
+            part_pdf_teco.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
+            msg_teco.attach(part_pdf_teco)
+            
+        # Allega l'EXCEL GENERALE solo alla tua email
+        if os.path.exists(EXCEL_FILE):
+            with open(EXCEL_FILE, "rb") as att_ex:
+                part_ex = MIMEBase("application", "octet-stream")
+                part_ex.set_payload(att_ex.read())
+                encoders.encode_base64(part_ex)
+                part_ex.add_header("Content-Disposition", f"attachment; filename= {EXCEL_FILE}")
+                msg_teco.attach(part_ex)
+                
+        # Spedizione delle due email separate
+        server = smtplib.SMTP("://gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
-        server.sendmail(email_mittente, elenco_destinatari, msg.as_string())
+        
+        # Spedisce al cliente
+        server.sendmail(email_mittente, destinatario, msg_cli.as_string())
+        # Spedisce a te su iCloud
+        server.sendmail(email_mittente, "franciosoandrea@me.com", msg_teco.as_string())
+        
         server.quit()
-        st.success("✉️ Email inviata correttamente al cliente e in copia a franciosoandrea@me.com!")
+        st.success("✉️ Documenti inviati! PDF inviato al cliente, PDF + Excel Storico inviati a franciosoandrea@me.com")
     except Exception as e:
-        st.warning(f"⚠️ Email non partita: {e}")
+        st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
+
 
 # --- 4. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma, firma_tecnico):
