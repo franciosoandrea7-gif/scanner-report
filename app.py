@@ -20,9 +20,11 @@ LOGO_FILE = "logo.png"
 
 # --- CONFIGURAZIONE TEAM TECNICI E PIN SEGRETI ---
 TECNICI = {
-    "Andrea Francioso": "1111",
-    "Collaboratore 1": "2222",
-    "Collaboratore 2": "3333"
+    "Andrea Francioso": "1974",
+    "Daniele Gennari 1": "1990",
+    "Lidia Distratis 2": "1977",
+    "Nome Dipendente 3": "3415",
+    "Nome Dipendente 4": "7712"
 }
 
 if "codice_sms" not in st.session_state:
