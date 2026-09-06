@@ -114,7 +114,7 @@ if st.session_state["codice_sms"] is not None:
 # --- 3. LOGICA INVIO COPIA COMPLETA VIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "qiad bvqq ijaj mutc "  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- METTI LA TUA PASSWORD DI GOOGLE QUI!
     
     msg = MIMEMultipart()
     msg['From'] = email_mittente
@@ -131,7 +131,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             encoders.encode_base64(part)
             part.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
             msg.attach(part)
-        server = smtplib.SMTP("smntp.gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, elenco_destinatari, msg.as_string())
@@ -140,7 +140,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     except Exception as e:
         st.warning(f"⚠️ Email non partita: {e}")
 
-# --- 4. CREAZIONE PDF CORRETTA ---
+# --- 4. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma, firma_tecnico):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -158,7 +158,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     if os.path.exists(LOGO_FILE):
         story.append(RLImage(LOGO_FILE, width=530, height=75))
         story.append(Spacer(1, 15))
-        
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     story.append(Paragraph(f"<b>Data:</b> {data_str} | <b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente} | <b>Cell:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio} | <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgente}", body_style))
     story.append(Spacer(1, 10))
@@ -166,7 +165,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
     
-    story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", section_heading))
+    story.append(Paragraph("<b>■ LAVORI ESEIUTI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     story.append(Spacer(1, 25))
     
@@ -183,34 +182,47 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         foto_img.thumbnail((500, 450))
         foto_img.save("temp_allegato.png")
         story.append(RLImage("temp_allegato.png", width=450, height=350))
-        
     doc.build(story)
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
     riga = {
-        "Data": data_str, "Tecnico": tecnico, "Cliente": cliente, "Email": email_cliente, "Cellulare": cellulare_cliente,
-        "Marchio": marchio, "Matricola": matricola if matricola else "N.D.",
-        "Guasto": guasto_segnalato if guasto_segnalato else "N.D.", "Intervento": descrizione_lavori,
-        "Km": km, "Ore": ore_lavoro, "Preventivo": preventivo, "Urgente": urgente, "Firma Cliente": stringa_firma
+        "Data Intervento": data_str,
+        "Tecnico Responsabile": tecnico,
+        "Ragione Sociale Cliente": cliente,
+        "Email Cliente": email_cliente,
+        "Cellulare Cliente": cellulare_cliente,
+        "Marchio Apparecchio": marchio,
+        "Matricola": matricola if matricola else "N.D.",
+        "Guasto Segnalato": guasto_segnalato if guasto_segnalato else "N.D.",
+        "Intervento Eseguito": descrizione_lavori,
+        "Km Percorsi": km,
+        "Ore Lavoro": ore_lavoro,
+        "Richiede Preventivo?": preventivo,
+        "Intervento Urgente?": urgente,
+        "Firma Cliente": stringa_firma
     }
+    
     if os.path.exists(EXCEL_FILE):
-        df = pd.concat([pd.read_excel(EXCEL_FILE), pd.DataFrame([riga])], ignore_index=True)
+        df_esistente = pd.read_excel(EXCEL_FILE)
+        df_nuovo = pd.concat([df_esistente, pd.DataFrame([riga])], ignore_index=True)
     else:
-        df = pd.DataFrame([riga])
-     df.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
+        df_nuovo = pd.DataFrame([riga])
+        
+    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?"]
+    df_nuovo = df_nuovo.reindex(columns=colonne_ordinate)
+    df_nuovo.to_excel(EXCEL_FILE, index=False, engine='openpyxl')
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
 st.subheader("💾 Registrazione")
 
-# Triangolo giallo di avviso ben visibile sul telefono/iPad prima del tasto
 st.warning("⚠️ ATTENZIONE TECNICO: La foto della scheda o della targa macchina è OBBLIGATORIA per poter chiudere l'intervento!")
 
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     if not cliente or not marchio or not descrizione_lavori or not email_cliente:
         st.error("⚠️ Compila i campi obbligatori (*)!")
     elif file_immagine is None:
-        st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattato la foto alla targa o alla scheda macchina!")
+        st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattare la foto alla targa o alla scheda macchina!")
     elif not tecnico_autorizzato:
         st.error("⚠️ Il Tecnico deve inserire un PIN valido per procedere!")
     elif not st.session_state["sms_validato"]:
