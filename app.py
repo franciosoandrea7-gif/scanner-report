@@ -230,7 +230,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     
     # SEZIONE FIRMA TECNICO RIPRISTINATA E CORRETTA
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
-    story.append(Paragraph(f"<i>🔒 ■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
+    story.append(Paragraph(f"<i>🔒 {firma_tecnico} il {data_str}</i>", firma_style))
     story.append(Spacer(1, 25))
     
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
