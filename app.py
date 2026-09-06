@@ -228,8 +228,9 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph(descrizione_lavori, body_style))
     story.append(Spacer(1, 25))
     
+    # SEZIONE FIRMA TECNICO RIPRISTINATA E CORRETTA
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
-    story.append(Paragraph(f"<i>🔒 {firma_tecnico}</i>", firma_style))
+    story.append(Paragraph(f"<i>🔒 ■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
     story.append(Spacer(1, 25))
     
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
@@ -242,6 +243,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         foto_img.save("temp_allegato.png")
         story.append(RLImage("temp_allegato.png", width=450, height=350))
     doc.build(story)
+
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON AUTOFIT COLONNE ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
