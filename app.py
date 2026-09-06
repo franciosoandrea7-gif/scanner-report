@@ -114,7 +114,7 @@ if st.session_state["codice_sms"] is not None:
 # --- 3. LOGICA INVIO COPIA COMPLETA VIA EMAIL CON DOPPIO ALLEGATO PER TE ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
-    password_mittente = "la-tua-password-di-16-lettere-di-google"  # <--- INSERISCI LA TUA PASSWORD DI GOOGLE QUI!
+    password_mittente = "qiad bvqq ijaj mutc"  # <--- INSERISCI LA TUA PASSWORD DI GOOGLE QUI!
     
     # 1. EMAIL PER IL CLIENTE (Solo PDF)
     msg_cli = MIMEMultipart()
@@ -157,7 +157,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                 msg_teco.attach(part_ex)
                 
         # Spedizione delle due email separate
-        server = smtplib.SMTP("://gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         
