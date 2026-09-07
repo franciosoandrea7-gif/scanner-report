@@ -225,7 +225,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                 part_ex.add_header("Content-Disposition", f"attachment; filename= {EXCEL_FILE}")
                 msg_teco.attach(part_ex)
                 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("://gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg_cli.as_string())
@@ -268,8 +268,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
     story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
     
-    # INSERIMENTO LINK CLICCABILE GOOGLE MAPS NEL PDF
-    if "https" in link_maps:
+    if "https" in str(link_maps):
         story.append(Paragraph(f"📍 <u><a href='{link_maps}' color='#2C5282'>■ Clicca qui per verificare la posizione GPS del Tecnico su Google Maps</a></u>", firma_style))
     else:
         story.append(Paragraph(f"📍 <i>Posizione GPS: Non disponibile o non autorizzata</i>", firma_style))
@@ -279,7 +278,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
     story.append(Paragraph(f"<i>■ {stringa_firma}</i>", firma_style))
     
-    # CICLO DI IMPAGINAZIONE FOTO MULTIPLE (Fino a 4 foto stampate in sequenza)
     if lista_file_immagini and len(lista_file_immagini) > 0:
         story.append(Spacer(1, 15))
         story.append(Paragraph("<b>■ DOCUMENTAZIONE FOTOGRAFICA APPARECCHIO</b>", section_heading))
@@ -310,7 +308,7 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         "Richiede Preventivo?": preventivo,
         "Intervento Urgente?": urgente,
         "Firma Cliente": stringa_firma,
-        "Link Google Maps GPS": link_maps # Salvato anche nello storico Excel
+        "Link Google Maps GPS": link_maps
     }
     
     nome_foglio = cliente.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("?", "_").replace("*", "_")[:30]
@@ -352,43 +350,17 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
 st.subheader("💾 Registrazione")
-
-st.warning("⚠️ ATTENZIONE TECNICO: La foto della scheda o della targa macchina è OBBLIGATORIA per poter chiudere l'intervento!")
+st.warning("⚠️ ATTENZIONE TECNICO: Almeno una foto della scheda o della macchina è OBBLIGATORIA per poter chiudere l'intervento!")
 
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    if not cliente or not marchio or not descrizione_lavori or not email_cliente:
+    gps_final_link = link_maps_str if 'link_maps_str' in globals() else "Posizione GPS Non Disponibile"
+    
+    if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE" and not cliente:
+        st.error("❌ BLOCCO: Scrivi il nome del nuovo cliente nella casella di testo prima di salvare!")
+    elif not cliente or not marchio or not descrizione_lavori or not email_cliente:
         st.error("⚠️ Compila i campi obbligatori (*)!")
-    elif file_immagine is None:
-        st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattato la foto alla targa o alla scheda macchina!")
+    elif not file_immagini_caricate or len(file_immagini_caricate) == 0:
+        st.error("❌ BLOCCO: Devi caricare o scattare almeno 1 foto prima di salvare il report!")
+    elif len(file_immagini_caricate) > 4:
+        st.error("❌ BLOCCO: Puoi caricare al massimo 4 foto per ogni intervento!")
     elif not tecnico_autorizzato:
-        st.error("⚠️ Il Tecnico deve inserire un PIN valido in alto per procedere!")
-    elif not st.session_state["sms_validato"]:
-        st.error("⚠️ Valida prima il codice SMS del cliente!")
-    else:
-        data_str = data_corrente.strftime("%d/%m/%Y")
-        firma_tecnico_str = f"Convalidato e Firmato dal Tecnico: {tecnico_selezionato} il {data_str}"
-        stringa_firma_cli = f"Firmato via SMS OTP (Cell: {cellulare_cliente}) il {data_str} (ID-{st.session_state['codice_sms']})"
-        
-        registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma_cli)
-        
-        c_pulito = cliente.replace(" ", "_").replace("/", "_")
-        pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
-        st.session_state["ultimo_pdf"] = pdf_filename
-        
-        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma_cli, tecnico_selezionato)
-        
-        st.success("🎉 Registrato correttamente!")
-        st.session_state["mostra_download"] = True
-        invia_email_pdf(email_cliente, pdf_filename, cliente)
-        st.rerun()
-
-# --- 7. DOWNLOAD FISSI IN CODA ---
-if st.session_state["mostra_download"]:
-    st.subheader("📥 Scarica i File")
-    with open(EXCEL_FILE, "rb") as f_ex:
-        st.download_button("📥 Scarica Registro Excel", f_ex, file_name=EXCEL_FILE, key="b_ex")
-    if st.session_state["ultimo_pdf"] and os.path.exists(st.session_state["ultimo_pdf"]):
-        with open(st.session_state["ultimo_pdf"], "rb") as f_pd:
-            st.download_button("📥 Scarica Questo PDF", f_pd, file_name=st.session_state["ultimo_pdf"], key="b_pd")
-
-        
