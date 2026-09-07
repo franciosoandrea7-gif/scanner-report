@@ -12,10 +12,11 @@ from PIL import Image
 from datetime import datetime
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
+from streamlit_js_eval import get_geolocation
 
 st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
-st.write("Gestionale riparazioni Nova Servimpianti con validazione forte ed invio Email.")
+st.write("Gestionale riparazioni Nova Servimpianti con validazione forte, foto multiple, GPS ed invio Email.")
 
 EXCEL_FILE = "registro_riparazioni.xlsx"
 LOGO_FILE = "logo.png"  
@@ -118,7 +119,21 @@ km = st.number_input("Kilometri percorsi (Km)", min_value=0, value=0)
 ore_lavoro = st.number_input("Ore di lavoro impiegate", min_value=0.0, value=0.0)
 preventivo = st.radio("Richiedi Preventivo?", ["NO", "SI"])
 urgente = st.radio("Intervento Urgente?", ["NO", "SI"])
-file_immagine = st.camera_input("Scatta la foto alla scheda")
+
+# === CATTURA AUTOMATICA GEOLOCALIZZAZIONE GPS ===
+st.write("📍 **Verifica Posizione GPS Intervento**")
+loc = get_geolocation()
+link_maps_str = "Posizione GPS Non Disponibile"
+if loc and 'coords' in loc:
+    lat = loc['coords']['latitude']
+    lon = loc['coords']['longitude']
+    link_maps_str = f"https://google.com{lat},{lon}"
+    st.success(f"✅ Coordinate GPS Acquisite Correttamente!")
+else:
+    st.info("ℹ️ Consenti l'accesso alla geolocalizzazione se richiesto dal telefono per tracciare la firma d'intervento.")
+
+# Selettore Foto Multiple (Fino a 4 foto)
+file_immagini_caricate = st.file_uploader("📸 Carica o Scatta Foto dell'Intervento (Massimo 4 foto)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
 
 # --- 2. GESTIONE SMS ---
 st.subheader("🔒 Firma Digitale SMS Cliente")
@@ -169,7 +184,7 @@ if st.session_state["codice_sms"] is not None:
                 st.error("❌ Codice errato!")
     else:
         st.success("🔒 Convalidato con Successo!")
-
+        
 # --- 3. LOGICA INVIO COPIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
@@ -220,8 +235,8 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     except Exception as e:
         st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
 
-# --- 4. CREAZIONE PDF ---
-def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma, firma_tecnico):
+# --- 4. CREAZIONE PDF CON LINK GOOGLE MAPS E FOTO MULTIPLE ---
+def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
@@ -248,25 +263,38 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     
     story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
-    story.append(Spacer(1, 25))
+    story.append(Spacer(1, 15))
     
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
     story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
-    story.append(Spacer(1, 25))
+    
+    # INSERIMENTO LINK CLICCABILE GOOGLE MAPS NEL PDF
+    if "https" in link_maps:
+        story.append(Paragraph(f"📍 <u><a href='{link_maps}' color='#2C5282'>■ Clicca qui per verificare la posizione GPS del Tecnico su Google Maps</a></u>", firma_style))
+    else:
+        story.append(Paragraph(f"📍 <i>Posizione GPS: Non disponibile o non autorizzata</i>", firma_style))
+        
+    story.append(Spacer(1, 15))
     
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
     story.append(Paragraph(f"<i>■ {stringa_firma}</i>", firma_style))
     
-    if file_immagine is not None:
-        story.append(Spacer(1, 20))
-        foto_img = Image.open(file_immagine)
-        foto_img.thumbnail((500, 450))
-        foto_img.save("temp_allegato.png")
-        story.append(RLImage("temp_allegato.png", width=450, height=350))
+    # CICLO DI IMPAGINAZIONE FOTO MULTIPLE (Fino a 4 foto stampate in sequenza)
+    if lista_file_immagini and len(lista_file_immagini) > 0:
+        story.append(Spacer(1, 15))
+        story.append(Paragraph("<b>■ DOCUMENTAZIONE FOTOGRAFICA APPARECCHIO</b>", section_heading))
+        for idx, file_img in enumerate(lista_file_immagini[:4]):
+            story.append(Spacer(1, 10))
+            foto_img = Image.open(file_img)
+            foto_img.thumbnail((500, 350))
+            temp_path = f"temp_allegato_{idx}.png"
+            foto_img.save(temp_path)
+            story.append(RLImage(temp_path, width=440, height=280))
+            
     doc.build(story)
 
-# --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON SUDDIVISIONE INTERNA PER CLIENTE ---
-def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
+# --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS SU EXCEL ---
+def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
     riga = {
         "Data Intervento": data_str,
         "Tecnico Responsabile": tecnico,
@@ -281,7 +309,8 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         "Ore Lavoro": ore_lavoro,
         "Richiede Preventivo?": preventivo,
         "Intervento Urgente?": urgente,
-        "Firma Cliente": stringa_firma
+        "Firma Cliente": stringa_firma,
+        "Link Google Maps GPS": link_maps # Salvato anche nello storico Excel
     }
     
     nome_foglio = cliente.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("?", "_").replace("*", "_")[:30]
@@ -301,7 +330,7 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
     else:
         df_nuovo = pd.DataFrame([riga])
         
-    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente"]
+    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente", "Link Google Maps GPS"]
     df_nuovo = df_nuovo.reindex(columns=colonne_ordinate)
     
     modalita = 'a' if os.path.exists(EXCEL_FILE) else 'w'
@@ -313,10 +342,9 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         df_nuovo.to_excel(writer, sheet_name=nome_foglio, index=False)
         worksheet = writer.sheets[nome_foglio]
         
-        # Allargamento automatico colonne ripristinato e privo di errori
         for col in worksheet.columns:
             max_len = 0
-            col_letter = get_column_letter(col[0].column)
+            col_letter = get_column_letter(col.column)
             for cell in col:
                 if cell.value is not None:
                     max_len = max(max_len, len(str(cell.value)))
