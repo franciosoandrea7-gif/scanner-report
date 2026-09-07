@@ -340,13 +340,15 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         df_nuovo.to_excel(writer, sheet_name=nome_foglio, index=False)
         worksheet = writer.sheets[nome_foglio]
         
-        for col in worksheet.columns:
+        # RISOLUZIONE ATTRIBUTE_ERROR: Usiamo l'indice del ciclo per calcolare la lettera della colonna
+        for col_idx, col in enumerate(worksheet.columns, start=1):
             max_len = 0
-            col_letter = get_column_letter(col.column)
+            col_letter = get_column_letter(col_idx)
             for cell in col:
                 if cell.value is not None:
                     max_len = max(max_len, len(str(cell.value)))
             worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
 st.subheader("💾 Registrazione")
