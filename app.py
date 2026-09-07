@@ -324,12 +324,11 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
 st.subheader("💾 Registrazione")
+
 st.warning("⚠️ ATTENZIONE TECNICO: La foto della scheda o della targa macchina è OBBLIGATORIA per poter chiudere l'intervento!")
 
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE" and not cliente:
-        st.error("❌ BLOCCO: Scrivi il nome del nuovo cliente nella casella di testo prima di salvare!")
-    elif not cliente or not marchio or not descrizione_lavori or not email_cliente:
+    if not cliente or not marchio or not descrizione_lavori or not email_cliente:
         st.error("⚠️ Compila i campi obbligatori (*)!")
     elif file_immagine is None:
         st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattato la foto alla targa o alla scheda macchina!")
@@ -339,7 +338,7 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         st.error("⚠️ Valida prima il codice SMS del cliente!")
     else:
         data_str = data_corrente.strftime("%d/%m/%Y")
-        firma_tecnico_str = tecnico_selezionato
+        firma_tecnico_str = f"Convalidato e Firmato dal Tecnico: {tecnico_selezionato} il {data_str}"
         stringa_firma_cli = f"Firmato via SMS OTP (Cell: {cellulare_cliente}) il {data_str} (ID-{st.session_state['codice_sms']})"
         
         registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma_cli)
@@ -347,4 +346,21 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         c_pulito = cliente.replace(" ", "_").replace("/", "_")
         pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
         st.session_state["ultimo_pdf"] = pdf_filename
+        
+        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma_cli, tecnico_selezionato)
+        
+        st.success("🎉 Registrato correttamente!")
+        st.session_state["mostra_download"] = True
+        invia_email_pdf(email_cliente, pdf_filename, cliente)
+        st.rerun()
+
+# --- 7. DOWNLOAD FISSI IN CODA ---
+if st.session_state["mostra_download"]:
+    st.subheader("📥 Scarica i File")
+    with open(EXCEL_FILE, "rb") as f_ex:
+        st.download_button("📥 Scarica Registro Excel", f_ex, file_name=EXCEL_FILE, key="b_ex")
+    if st.session_state["ultimo_pdf"] and os.path.exists(st.session_state["ultimo_pdf"]):
+        with open(st.session_state["ultimo_pdf"], "rb") as f_pd:
+            st.download_button("📥 Scarica Questo PDF", f_pd, file_name=st.session_state["ultimo_pdf"], key="b_pd")
+
         
