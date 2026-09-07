@@ -258,8 +258,19 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         story.append(Spacer(1, 15))
         
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
-    story.append(Paragraph(f"<b>Data:</b> {data_str} | <b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente} | <b>Cell:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio} | <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgent}", body_style))
-    story.append(Spacer(1, 10))
+    
+    # DATI DELL'INTERVENTO STRUTTURATI IN LINEA PER UNA MAGGIORE LEGGIBILITÀ E ORDINE VISIVO
+    dati_strutturati = f"""
+    <b>Data Intervento:</b> {data_str}<br/>
+    <b>Cliente / Ragione Sociale:</b> {cliente}<br/>
+    <b>Email Cliente:</b> {email_cliente}<br/>
+    <b>Numero Cellulare:</b> {cellulare_cliente}<br/>
+    <b>Marchio Apparecchio:</b> {marchio} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/>
+    <b>Kilometri Percorsi:</b> {km} Km &nbsp;&nbsp;|&nbsp;&nbsp; <b>Ore Lavoro Impiegate:</b> {ore_lavoro}<br/>
+    <b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Intervento Urgente:</b> {urgent}
+    """
+    story.append(Paragraph(dati_strutturati, body_style))
+    story.append(Spacer(1, 15))
     
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
@@ -293,6 +304,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
             story.append(RLImage(temp_path, width=440, height=280))
             
     doc.build(story)
+
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS SU EXCEL ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
