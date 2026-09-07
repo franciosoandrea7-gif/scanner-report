@@ -364,3 +364,33 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     elif len(file_immagini_caricate) > 4:
         st.error("❌ BLOCCO: Puoi caricare al massimo 4 foto per ogni intervento!")
     elif not tecnico_autorizzato:
+        st.error("⚠️ Il Tecnico deve inserire un PIN valido in alto per procedere!")
+    elif not st.session_state["sms_validato"]:
+        st.error("⚠️ Valida prima il codice SMS del cliente!")
+    else:
+        data_str = data_corrente.strftime("%d/%m/%Y")
+        firma_tecnico_str = tecnico_selezionato
+        stringa_firma_cli = f"Firmato via SMS OTP (Cell: {cellulare_cliente}) il {data_str} (ID-{st.session_state['codice_sms']})"
+        
+        registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma_cli, gps_final_link)
+        
+        c_pulito = cliente.replace(" ", "_").replace("/", "_")
+        pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
+        st.session_state["ultimo_pdf"] = pdf_filename
+        
+        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagini_caricate, stringa_firma_cli, firma_tecnico_str, gps_final_link)
+        
+        st.success("🎉 Registrato correttamente!")
+        st.session_state["mostra_download"] = True
+        invia_email_pdf(email_cliente, pdf_filename, cliente)
+        st.rerun()
+
+# --- 7. DOWNLOAD FISSI IN CODA ---
+if st.session_state["mostra_download"]:
+    st.subheader("📥 Scarica i File")
+    with open(EXCEL_FILE, "rb") as f_ex:
+        st.download_button("📥 Scarica Registro Excel", f_ex, file_name=EXCEL_FILE, key="b_ex")
+    if st.session_state["ultimo_pdf"] and os.path.exists(st.session_state["ultimo_pdf"]):
+        with open(st.session_state["ultimo_pdf"], "rb") as f_pd:
+            st.download_button("📥 Scarica Questo PDF", f_pd, file_name=st.session_state["ultimo_pdf"], key="b_pd")
+
