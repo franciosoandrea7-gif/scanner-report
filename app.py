@@ -42,7 +42,6 @@ lista_clienti_esistenti = []
 if os.path.exists(EXCEL_FILE):
     try:
         wb = load_workbook(EXCEL_FILE, read_only=True)
-        # Sostituiamo i trattini bassi con gli spazi per renderli leggibili nel menu
         lista_clienti_esistenti = [sheet.replace("_", " ") for sheet in wb.sheetnames if sheet != "Sheet1"]
         wb.close()
     except Exception:
@@ -100,7 +99,6 @@ if pin_tecnico:
 st.subheader("👤 Dati Intervento")
 data_corrente = st.date_input("Data Intervento", datetime.now())
 
-# Menu a tendina intelligente per i Clienti
 cliente_selezionato_menu = st.selectbox("Seleziona Cliente *", opzioni_menu_clienti)
 
 if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE":
@@ -184,7 +182,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     msg_teco['From'] = email_mittente
     msg_teco['To'] = "franciosoandrea@me.com"
     msg_teco['Subject'] = f"Nova Servimpianti - Backup Intervento: {nome_cliente}"
-    msg_teco.attach(MIMEText(f"Rapporto registrato correttamente nel database.\nIn allegato trovi il PDF dell'intervento e il file Excel Generale aggiornato.", 'plain'))
+    msg_teco.attach(MIMEText("Rapporto registrato correttamente nel database.\nIn allegato trovi il PDF dell'intervento e il file Excel Generale aggiornato.", 'plain'))
     
     try:
         with open(allegato_path, "rb") as att_pdf:
@@ -221,3 +219,5 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
 
 # --- 4. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma, firma_tecnico):
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
