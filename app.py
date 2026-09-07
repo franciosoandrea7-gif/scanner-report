@@ -309,17 +309,18 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
     if modalita == 'a':
         parametri_writer['if_sheet_exists'] = 'replace'
         
-    with pd.ExcelWriter(EXCEL_FILE, **parametri_writer) as writer:
-        df_nuovo.to_excel(writer, sheet_name=nome_foglio, index=False)
-        worksheet = writer.sheets[nome_foglio]
-        
-        # FIX DEFINITIVO ATTRIBUTO LARGHEZZA COLONNA CON STRUTTURA VALIDA
-        for col_idx, col in enumerate(worksheet.columns, start=1):
+       # Motore di scrittura avanzato con allargamento automatico colonne
+    with pd.ExcelWriter(EXCEL_FILE, engine='openpyxl') as writer:
+        df_nuovo.to_excel(writer, index=False)
+        worksheet = writer.sheets['Sheet1']
+        # Ciclo per calcolare la lunghezza del testo in ogni colonna e allargarla
+        for col in worksheet.columns:
             max_len = 0
-            col_letter = get_column_letter(col_idx)
+            col_letter = col[0].column_letter # Prende la lettera della colonna (A, B, C...)
             for cell in col:
                 if cell.value:
                     max_len = max(max_len, len(str(cell.value)))
+            # Imposta la larghezza con un margine extra di 4 spazi per dare aria alla cella
             worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
