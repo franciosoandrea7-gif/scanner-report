@@ -11,6 +11,7 @@ from email import encoders
 from PIL import Image
 from datetime import datetime
 from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 
 st.set_page_config(page_title="Nova Report Pro", page_icon="⚙️", layout="centered")
 st.title("🛠️ Nova Report Pro")
@@ -102,7 +103,8 @@ data_corrente = st.date_input("Data Intervento", datetime.now())
 cliente_selezionato_menu = st.selectbox("Seleziona Cliente *", opzioni_menu_clienti, key="main_select_client")
 
 if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE":
-    cliente = st.text_input("Inserisci Nuova Ragione Sociale Cliente *", key="new_client_name_input")
+    nuovo_cliente_input = st.text_input("Inserisci Nuova Ragione Sociale Cliente *", key="new_client_name_input")
+    cliente = nuovo_cliente_input.strip() if nuovo_cliente_input else ""
 else:
     cliente = cliente_selezionato_menu
 
@@ -123,6 +125,8 @@ st.subheader("🔒 Firma Digitale SMS Cliente")
 if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     if not tecnico_autorizzato:
         st.error("⛔ AZIONE BLOCCATA: Devi prima selezionare il tuo nome Tecnico e inserire il PIN corretto in alto!")
+    elif cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE" and not cliente:
+        st.error("⚠️ Scrivi il nome del nuovo cliente nella casella di testo!")
     elif not cellulare_cliente or not cliente:
         st.error("⚠️ Inserisci Cliente e Cellulare!")
     else:
@@ -309,9 +313,10 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         df_nuovo.to_excel(writer, sheet_name=nome_foglio, index=False)
         worksheet = writer.sheets[nome_foglio]
         
-        for col in worksheet.columns:
+        # FIX DEFINITIVO ATTRIBUTO LARGHEZZA COLONNA CON STRUTTURA VALIDA
+        for col_idx, col in enumerate(worksheet.columns, start=1):
             max_len = 0
-            col_letter = col.column_letter
+            col_letter = get_column_letter(col_idx)
             for cell in col:
                 if cell.value:
                     max_len = max(max_len, len(str(cell.value)))
@@ -322,8 +327,10 @@ st.subheader("💾 Registrazione")
 st.warning("⚠️ ATTENZIONE TECNICO: La foto della scheda o della targa macchina è OBBLIGATORIA per poter chiudere l'intervento!")
 
 if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
-    if not cliente or not marchio or not descrizione_lavori or not email_cliente:
-        st.error("⚠️ Compila i campi obbligatori (*) o inserisci il nome del nuovo cliente se hai selezionato la voce apposita!")
+    if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE" and not cliente:
+        st.error("❌ BLOCCO: Scrivi il nome del nuovo cliente nella casella di testo prima di salvare!")
+    elif not cliente or not marchio or not descrizione_lavori or not email_cliente:
+        st.error("⚠️ Compila i campi obbligatori (*)!")
     elif file_immagine is None:
         st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattato la foto alla targa o alla scheda macchina!")
     elif not tecnico_autorizzato:
