@@ -1,6 +1,8 @@
-openpyxl
+streamlit
 pandas
-Pillow
+openpyxl
 reportlab
-requests
+Pillow
 twilio
+requests
+streamlit-js-eval
