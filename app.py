@@ -58,7 +58,7 @@ with st.expander("📚 Archivio Storico Lavori (Excel)"):
             fogli = wb.sheetnames
             wb.close()
             if fogli:
-                foglio_scelto = st.selectbox("Seleziona il registro del cliente da visualizzare:", fogli)
+                foglio_scelto = st.selectbox("Seleziona il registro del cliente da visualizzare:", fogli, key="view_select_client")
                 st.dataframe(pd.read_excel(EXCEL_FILE, sheet_name=foglio_scelto))
             else:
                 st.info("ℹ️ L'archivio Excel non contiene fogli validi.")
@@ -99,13 +99,13 @@ if pin_tecnico:
 st.subheader("👤 Dati Intervento")
 data_corrente = st.date_input("Data Intervento", datetime.now())
 
-cliente_selezionato_menu = st.selectbox("Seleziona Cliente *", opzioni_menu_clienti)
+cliente_selezionato_menu = st.selectbox("Seleziona Cliente *", opzioni_menu_clienti, key="main_select_client")
 
+# GESTIONE CORRETTA DEL NOME CLIENTE
 if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE":
-    cliente = st.text_input("Inserisci Nuova Ragione Sociale Cliente *")
+    cliente = st.text_input("Inserisci Nuova Ragione Sociale Cliente *", key="new_client_name_input")
 else:
     cliente = cliente_selezionato_menu
-    st.info(f"📍 Cliente selezionato: **{cliente}**")
 
 email_cliente = st.text_input("Email Cliente *")
 cellulare_cliente = st.text_input("Numero Cellulare Cliente *")
@@ -220,4 +220,3 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
 # --- 4. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma, firma_tecnico):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
