@@ -101,7 +101,6 @@ data_corrente = st.date_input("Data Intervento", datetime.now())
 
 cliente_selezionato_menu = st.selectbox("Seleziona Cliente *", opzioni_menu_clienti, key="main_select_client")
 
-# GESTIONE CORRETTA DEL NOME CLIENTE
 if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE":
     cliente = st.text_input("Inserisci Nuova Ragione Sociale Cliente *", key="new_client_name_input")
 else:
@@ -207,7 +206,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                 part_ex.add_header("Content-Disposition", f"attachment; filename= {EXCEL_FILE}")
                 msg_teco.attach(part_ex)
                 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("://gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg_cli.as_string())
@@ -220,3 +219,125 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
 # --- 4. CREAZIONE PDF ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, file_immagine, stringa_firma, firma_tecnico):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    
+    doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
+    section_heading = ParagraphStyle('T2', parent=styles['Heading3'], fontSize=12, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
+    body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
+    firma_style = ParagraphStyle('T4', parent=styles['Normal'], fontSize=9, leading=14, textColor=colors.HexColor("#4A5568"))
+    
+    story = []
+    if os.path.exists(LOGO_FILE):
+        story.append(RLImage(LOGO_FILE, width=545, height=90))
+        story.append(Spacer(1, 15))
+        
+    story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
+    story.append(Paragraph(f"<b>Data:</b> {data_str} | <b>Cliente:</b> {cliente}<br/><b>Email:</b> {email_cliente} | <b>Cell:</b> {cellulare_cliente}<br/><b>Marchio:</b> {marchio} | <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/><b>Km:</b> {km} | <b>Ore:</b> {ore_lavoro}<br/><b>Preventivo:</b> {preventivo} | <b>Urgente:</b> {urgent}", body_style))
+    story.append(Spacer(1, 10))
+    
+    story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
+    story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
+    
+    story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", section_heading))
+    story.append(Paragraph(descrizione_lavori, body_style))
+    story.append(Spacer(1, 25))
+    
+    story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
+    story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
+    story.append(Spacer(1, 25))
+    
+    story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
+    story.append(Paragraph(f"<i>■ {stringa_firma}</i>", firma_style))
+    
+    if file_immagine is not None:
+        story.append(Spacer(1, 20))
+        foto_img = Image.open(file_immagine)
+        foto_img.thumbnail((500, 450))
+        foto_img.save("temp_allegato.png")
+        story.append(RLImage("temp_allegato.png", width=450, height=350))
+    doc.build(story)
+
+# --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON SUDDIVISIONE INTERNA PER CLIENTE ---
+def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma):
+    riga = {
+        "Data Intervento": data_str,
+        "Tecnico Responsabile": tecnico,
+        "Ragione Sociale Cliente": cliente,
+        "Email Cliente": email_cliente,
+        "Cellulare Cliente": cellulare_cliente,
+        "Marchio Apparecchio": marchio,
+        "Matricola": matricola if matricola else "N.D.",
+        "Guasto Segnalato": guasto_segnalato if guasto_segnalato else "N.D.",
+        "Intervento Eseguito": descrizione_lavori,
+        "Km Percorsi": km,
+        "Ore Lavoro": ore_lavoro,
+        "Richiede Preventivo?": preventivo,
+        "Intervento Urgente?": urgente,
+        "Firma Cliente": stringa_firma
+    }
+    
+    nome_foglio = cliente.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("?", "_").replace("*", "_")[:30]
+    
+    if os.path.exists(EXCEL_FILE):
+        try:
+            wb = load_workbook(EXCEL_FILE, read_only=True)
+            fogli_presenti = wb.sheetnames
+            wb.close()
+            if nome_foglio in fogli_presenti:
+                df_esistente = pd.read_excel(EXCEL_FILE, sheet_name=nome_foglio)
+                df_nuovo = pd.concat([df_esistente, pd.DataFrame([riga])], ignore_index=True)
+            else:
+                df_nuovo = pd.DataFrame([riga])
+        except Exception:
+            df_nuovo = pd.DataFrame([riga])
+    else:
+        df_nuovo = pd.DataFrame([riga])
+        
+    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente"]
+    df_nuovo = df_nuovo.reindex(columns=colonne_ordinate)
+    
+    modalita = 'a' if os.path.exists(EXCEL_FILE) else 'w'
+    parametri_writer = {'engine': 'openpyxl', 'mode': modalita}
+    if modalita == 'a':
+        parametri_writer['if_sheet_exists'] = 'replace'
+        
+    with pd.ExcelWriter(EXCEL_FILE, **parametri_writer) as writer:
+        df_nuovo.to_excel(writer, sheet_name=nome_foglio, index=False)
+        worksheet = writer.sheets[nome_foglio]
+        
+        for col in worksheet.columns:
+            max_len = 0
+            col_letter = col.column_letter
+            for cell in col:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+# --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
+st.subheader("💾 Registrazione")
+st.warning("⚠️ ATTENZIONE TECNICO: La foto della scheda o della targa macchina è OBBLIGATORIA per poter chiudere l'intervento!")
+
+if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
+    if not cliente or not marchio or not descrizione_lavori or not email_cliente:
+        st.error("⚠️ Compila i campi obbligatori (*) o inserisci il nome del nuovo cliente se hai selezionato la voce apposita!")
+    elif file_immagine is None:
+        st.error("❌ BLOCCO: Non puoi salvare il report se non hai scattato la foto alla targa o alla scheda macchina!")
+    elif not tecnico_autorizzato:
+        st.error("⚠️ Il Tecnico deve inserire un PIN valido in alto per procedere!")
+    elif not st.session_state["sms_validato"]:
+        st.error("⚠️ Valida prima il codice SMS del cliente!")
+    else:
+        data_str = data_corrente.strftime("%d/%m/%Y")
+        firma_tecnico_str = tecnico_selezionato
+        stringa_firma_cli = f"Firmato via SMS OTP (Cell: {cellulare_cliente}) il {data_str} (ID-{st.session_state['codice_sms']})"
+        
+        registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma_cli)
+        
+        c_pulito = cliente.replace(" ", "_").replace("/", "_")
+        pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
+        st.session_state["ultimo_pdf"] = pdf_filename
+        
