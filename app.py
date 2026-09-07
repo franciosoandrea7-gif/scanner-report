@@ -141,7 +141,7 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
     if not tecnico_autorizzato:
         st.error("⛔ AZIONE BLOCCATA: Devi prima selezionare il tuo nome Tecnico e inserire il PIN corretto in alto!")
     elif cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE" and not cliente:
-        st.error("⚠️ Scrivi il nome del nuovo cliente nella casella di testo!")
+        st.error("⚠️ Scrivi il nome del nuovo cliente nella casella di testo prima di inviare l'SMS!")
     elif not cellulare_cliente or not cliente:
         st.error("⚠️ Inserisci Cliente e Cellulare!")
     else:
@@ -155,7 +155,8 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         AUTH_TOKEN = st.secrets["TWILIO_AUTH_TOKEN"]
         NUMERO_TWILIO = st.secrets["TWILIO_NUMBER"]
         
-        num_destinatario = cellulare_cliente
+        # Gestione formattazione numero destinatario
+        num_destinatario = cellulare_cliente.strip().replace(" ", "")
         if not num_destinatario.startswith("+"):
             if num_destinatario.startswith("39"):
                 num_destinatario = "+" + num_destinatario
@@ -166,10 +167,11 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         
         try:
             twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
+            # Invio reale forzato
             twilio_client.messages.create(body=testo_messaggio, from_=NUMERO_TWILIO, to=num_destinatario)
-            st.success("📩 SMS inviato al telefono del cliente con successo!")
+            st.success(f"📩 SMS inviato correttamente al numero {num_destinatario}!")
         except Exception as e:
-            st.warning(f"⚠️ Nota: Richiesta elaborata. Se l'SMS non arriva, usa il codice mostrato qui sotto. Errore: {e}")
+            st.error(f"❌ Errore critico Twilio: Impossibile inviare l'SMS. Verifica i Secrets o il numero acquistato. Dettaglio: {e}")
 
 if st.session_state["codice_sms"] is not None:
     st.info(f"👉 CODICE DI VALIDAZIONE D'EMERGENZA: {st.session_state['codice_sms']}")
@@ -184,6 +186,7 @@ if st.session_state["codice_sms"] is not None:
                 st.error("❌ Codice errato!")
     else:
         st.success("🔒 Convalidato con Successo!")
+
         
 # --- 3. LOGICA INVIO COPIA EMAIL ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
@@ -225,7 +228,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                 part_ex.add_header("Content-Disposition", f"attachment; filename= {EXCEL_FILE}")
                 msg_teco.attach(part_ex)
                 
-        server = smtplib.SMTP("://gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg_cli.as_string())
