@@ -309,18 +309,17 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
     if modalita == 'a':
         parametri_writer['if_sheet_exists'] = 'replace'
         
-           with pd.ExcelWriter(EXCEL_FILE, **parametri_writer) as writer:
+    with pd.ExcelWriter(EXCEL_FILE, **parametri_writer) as writer:
         df_nuovo.to_excel(writer, sheet_name=nome_foglio, index=False)
         worksheet = writer.sheets[nome_foglio]
         
-        # --- BLOCCO CORRETTO PER AUTO-ALLARGAMENTO COLONNE IN BASE AL TESTO ---
+        # Allargamento automatico colonne ripristinato e privo di errori
         for col in worksheet.columns:
             max_len = 0
-            col_letter = get_column_letter(col[0].column) # Recupera la lettera corretta della colonna
+            col_letter = get_column_letter(col[0].column)
             for cell in col:
                 if cell.value is not None:
                     max_len = max(max_len, len(str(cell.value)))
-            # Imposta la larghezza calcolata con un margine extra di 4 spazi
             worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
