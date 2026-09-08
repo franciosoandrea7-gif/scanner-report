@@ -311,8 +311,8 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
             
     doc.build(story)
 
-# --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS SU EXCEL ---
-def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
+# --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS E NOTE SU EXCEL ---
+def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
     riga = {
         "Data Intervento": data_str,
         "Tecnico Responsabile": tecnico,
@@ -323,6 +323,7 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         "Matricola": matricola if matricola else "N.D.",
         "Guasto Segnalato": guasto_segnalato if guasto_segnalato else "N.D.",
         "Intervento Eseguito": descrizione_lavori,
+        "Note Extra": note_extra if note_extra else "N.D.", # Aggiunta la colonna Note nel dizionario dati
         "Km Percorsi": km,
         "Ore Lavoro": ore_lavoro,
         "Richiede Preventivo?": preventivo,
@@ -348,7 +349,8 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
     else:
         df_nuovo = pd.DataFrame([riga])
         
-    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente", "Link Google Maps GPS"]
+    # Aggiunta la colonna "Note Extra" nell'ordine corretto delle colonne del file Excel
+    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Note Extra", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente", "Link Google Maps GPS"]
     df_nuovo = df_nuovo.reindex(columns=colonne_ordinate)
     
     modalita = 'a' if os.path.exists(EXCEL_FILE) else 'w'
@@ -360,7 +362,6 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         df_nuovo.to_excel(writer, sheet_name=nome_foglio, index=False)
         worksheet = writer.sheets[nome_foglio]
         
-        # RISOLUZIONE ATTRIBUTE_ERROR: Usiamo l'indice del ciclo per calcolare la lettera della colonna
         for col_idx, col in enumerate(worksheet.columns, start=1):
             max_len = 0
             col_letter = get_column_letter(col_idx)
@@ -368,6 +369,7 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
                 if cell.value is not None:
                     max_len = max(max_len, len(str(cell.value)))
             worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
 
 
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
