@@ -115,7 +115,7 @@ else:
 email_cliente = st.text_input("Email Cliente *")
 cellulare_cliente = st.text_input("Numero Cellulare Cliente *")
 
-# === NUOVO CAMPO INSERITO: PROPRIETARIO NUMERO / FIRMATARIO ===
+# === CAMPO INSERITO: PROPRIETARIO NUMERO / FIRMATARIO ===
 firmatario_cliente = st.text_input("Nome di chi firma l'SMS (es. Sig. Mario Rossi) *")
 
 marchio = st.text_input("Marchio Apparecchio *")
@@ -142,6 +142,7 @@ else:
     st.info("ℹ️ Consenti l'accesso alla geolocalizzazione se richiesto dal telefono per tracciare la firma d'intervento.")
 
 file_immagini_caricate = st.file_uploader("📸 Carica o Scatta Foto dell'Intervento (Massimo 4 foto)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+
 
 # --- 2. GESTIONE SMS ---
 st.subheader("🔒 Firma Digitale SMS Cliente")
@@ -286,8 +287,8 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     except Exception as e:
         st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
 
-# --- 4. CREAZIONE PDF CON INTETSTAZIONE DETTAGLIATA ---
-def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, note_extra, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
+# --- 4. CREAZIONE PDF CON LINK GOOGLE MAPS E FOTO MULTIPLE ---
+def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, note_extra, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
@@ -307,11 +308,12 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     
+    # Sistemato {urgent} per combaciare con il parametro della funzione e aggiunto il firmatario
     dati_strutturati = f"""
     <b>Data Intervento:</b> {data_str}<br/>
     <b>Cliente / Ragione Sociale:</b> {cliente}<br/>
     <b>Email Cliente:</b> {email_cliente}<br/>
-    <b>Numero Cellulare:</b> {cellulare_cliente}<br/>
+    <b>Numero Cellulare:</b> {cellulare_cliente} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Firmatario/Collaboratore:</b> {firmatario if firmatario else 'N.D.'}<br/>
     <b>Marchio Apparecchio:</b> {marchio} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/>
     <b>Kilometri Percorsi:</b> {km} Km &nbsp;&nbsp;|&nbsp;&nbsp; <b>Ore Lavoro Impiegate:</b> {ore_lavoro}<br/>
     <b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Intervento Urgente:</b> {urgent}
@@ -325,11 +327,13 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph("<b>■ LAVORI ESEGUITI E MATERIALI UTILIZZATI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     
+    # === NUOVA SEZIONE NOTE STAMPATA NEL PDF ===
     if note_extra:
         story.append(Paragraph("<b>■ NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
         story.append(Paragraph(note_extra, body_style))
         
     story.append(Spacer(1, 15))
+    
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
     story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
     
@@ -339,6 +343,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         story.append(Paragraph(f"📍 <i>Posizione GPS: Non disponibile o non autorizzata</i>", firma_style))
         
     story.append(Spacer(1, 15))
+    
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
     story.append(Paragraph(f"<i>■ {stringa_firma}</i>", firma_style))
     
@@ -355,19 +360,21 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
             
     doc.build(story)
 
+
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS E NOTE SU EXCEL ---
-def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
+def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
     riga = {
         "Data Intervento": data_str,
         "Tecnico Responsabile": tecnico,
         "Ragione Sociale Cliente": cliente,
         "Email Cliente": email_cliente,
         "Cellulare Cliente": cellulare_cliente,
+        "Firmatario / Proprietario Numero": firmatario if firmatario else "N.D.",
         "Marchio Apparecchio": marchio,
         "Matricola": matricola if matricola else "N.D.",
         "Guasto Segnalato": guasto_segnalato if guasto_segnalato else "N.D.",
         "Intervento Eseguito e Materiali Utilizzati": descrizione_lavori,
-        "Note Extra": note_extra if note_extra else "N.D.", # Aggiunta la colonna Note nel dizionario dati
+        "Note Extra": note_extra if note_extra else "N.D.",
         "Km Percorsi": km,
         "Ore Lavoro": ore_lavoro,
         "Richiede Preventivo?": preventivo,
@@ -393,8 +400,15 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
     else:
         df_nuovo = pd.DataFrame([riga])
         
-    # Aggiunta la colonna "Note Extra" nell'ordine corretto delle colonne del file Excel
-    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito e materiali utilizzati", "Note Extra", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente", "Link Google Maps GPS"]
+    # Ordine sistemato delle colonne inclusa la colonna corretta dei lavori eseguiti e del firmatario
+    colonne_ordinate = [
+        "Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", 
+        "Email Cliente", "Cellulare Cliente", "Firmatario / Proprietario Numero", 
+        "Marchio Apparecchio", "Matricola", "Guasto Segnalato", 
+        "Intervento Eseguito e Materiali Utilizzati", "Note Extra", 
+        "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", 
+        "Intervento Urgente?", "Firma Cliente", "Link Google Maps GPS"
+    ]
     df_nuovo = df_nuovo.reindex(columns=colonne_ordinate)
     
     modalita = 'a' if os.path.exists(EXCEL_FILE) else 'w'
@@ -415,7 +429,6 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
             worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
 
-
 # --- 6. BOTTONE DI SALVATAGGIO FINALIZZATO ---
 st.subheader("💾 Registrazione")
 st.warning("⚠️ ATTENZIONE TECNICO: Almeno una foto della scheda o della macchina è OBBLIGATORIA per poter chiudere l'intervento!")
@@ -425,8 +438,8 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     
     if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE" and not cliente:
         st.error("❌ BLOCCO: Scrivi il nome del nuovo cliente nella casella di testo prima di salvare!")
-    elif not cliente or not marchio or not descrizione_lavori or not email_cliente:
-        st.error("⚠️ Compila i campi obbligatori (*)!")
+    elif not cliente or not marchio or not descrizione_lavori or not email_cliente or not firmatario_cliente:
+        st.error("⚠️ Compila i campi obbligatori (*) inclusa la persona che firma l'SMS!")
     elif not file_immagini_caricate or len(file_immagini_caricate) == 0:
         st.error("❌ BLOCCO: Devi caricare o scattare almeno 1 foto prima di salvare il report!")
     elif len(file_immagini_caricate) > 4:
@@ -438,17 +451,17 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
     else:
         data_str = data_corrente.strftime("%d/%m/%Y")
         firma_tecnico_str = tecnico_selezionato
-        stringa_firma_cli = f"Firmato via SMS OTP (Cell: {cellulare_cliente}) il {data_str} (ID-{st.session_state['codice_sms']})"
         
-        # INSERITA LA VOCE MANCANTE: note_extra
-        registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma_cli, gps_final_link)
+        # Stringa firma aggiornata con il nome del collaboratore/proprietario inserito a schermo
+        stringa_firma_cli = f"Firmato via SMS OTP da {firmatario_cliente} (Cell: {cellulare_cliente}) il {data_str} (ID-{st.session_state['codice_sms']})"
+        
+        registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, firmatario_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma_cli, gps_final_link)
         
         c_pulito = cliente.replace(" ", "_").replace("/", "_")
         pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
         st.session_state["ultimo_pdf"] = pdf_filename
         
-        # INSERITA LA VOCE MANCANTE: note_extra
-        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, note_extra, file_immagini_caricate, stringa_firma_cli, firma_tecnico_str, gps_final_link)
+        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, firmatario_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, note_extra, file_immagini_caricate, stringa_firma_cli, firma_tecnico_str, gps_final_link)
         
         st.success("🎉 Registrato correttamente!")
         st.session_state["mostra_download"] = True
