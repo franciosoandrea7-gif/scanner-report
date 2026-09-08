@@ -24,10 +24,10 @@ LOGO_FILE = "logo.png"
 # --- CONFIGURAZIONE TEAM TECNICI E PIN SEGRETI ---
 TECNICI = {
     "Andrea Francioso": "1974",
-    "Daniele Gennari ": "1990",
-    "Lidia Distratis ": "1977",
-    "Nome Dipendente ": "3415",
-    "Nome Dipendente ": "7712"
+    "Daniele Gennari 1": "1990",
+    "Lidia Distratis 2": "1977",
+    "Nome Dipendente 3": "3415",
+    "Nome Dipendente 4": "7712"
 }
 
 if "codice_sms" not in st.session_state:
@@ -69,12 +69,15 @@ with st.expander("📚 Archivio Storico Lavori (Excel)"):
     else:
         st.info("ℹ️ L'archivio Excel è vuoto.")
 
-# --- 0. ARCHIVIO PDF ---
+# --- 0. ARCHIVIO PDF CON RICERCA VELOCE ---
 with st.expander("📂 Recupera Vecchi Report PDF Emessi"):
     lista_pdf = [f for f in os.listdir(".") if f.startswith("Report_") and f.endswith(".pdf")]
     if len(lista_pdf) > 0:
         lista_pdf.sort(reverse=True)
+        cerca_pdf = st.text_input("🔍 Cerca PDF per nome cliente:", "").strip().lower()
         for nome_pdf in lista_pdf:
+            if cerca_pdf and cerca_pdf not in nome_pdf.lower():
+                continue
             col_n, col_b = st.columns(2)
             with col_n:
                 st.write(f"📄 {nome_pdf.replace('Report_', '').replace('.pdf', '')}")
@@ -111,11 +114,16 @@ else:
 
 email_cliente = st.text_input("Email Cliente *")
 cellulare_cliente = st.text_input("Numero Cellulare Cliente *")
+
+# === NUOVO CAMPO INSERITO: PROPRIETARIO NUMERO / FIRMATARIO ===
+firmatario_cliente = st.text_input("Nome di chi firma l'SMS (es. Sig. Mario Rossi) *")
+
 marchio = st.text_input("Marchio Apparecchio *")
 matricola = st.text_input("Matricola Apparecchio")
 guasto_segnalato = st.text_area("Guasto Segnalato")
 descrizione_lavori = st.text_area("Intervento Eseguito e Materiali Utilizzati *")
 note_extra = st.text_area("Note Extra / Ricambi da ordinare")
+
 km = st.number_input("Kilometri percorsi (Km)", min_value=0, value=0)
 ore_lavoro = st.number_input("Ore di lavoro impiegate", min_value=0.0, value=0.0)
 preventivo = st.radio("Richiedi Preventivo?", ["NO", "SI"])
@@ -133,7 +141,6 @@ if loc and 'coords' in loc:
 else:
     st.info("ℹ️ Consenti l'accesso alla geolocalizzazione se richiesto dal telefono per tracciare la firma d'intervento.")
 
-# Selettore Foto Multiple (Fino a 4 foto)
 file_immagini_caricate = st.file_uploader("📸 Carica o Scatta Foto dell'Intervento (Massimo 4 foto)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
 
 # --- 2. GESTIONE SMS ---
@@ -143,6 +150,8 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         st.error("⛔ AZIONE BLOCCATA: Devi prima selezionare il tuo nome Tecnico e inserire il PIN corretto in alto!")
     elif cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE" and not cliente:
         st.error("⚠️ Scrivi il nome del nuovo cliente nella casella di testo prima di inviare l'SMS!")
+    elif not firmatario_cliente:
+        st.error("⚠️ Inserisci il nome della persona fisica che firmerà l'SMS!")
     elif not cellulare_cliente or not cliente:
         st.error("⚠️ Inserisci Cliente e Cellulare!")
     else:
@@ -156,7 +165,6 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
         AUTH_TOKEN = st.secrets["TWILIO_AUTH_TOKEN"]
         NUMERO_TWILIO = st.secrets["TWILIO_NUMBER"]
         
-        # Gestione formattazione numero destinatario
         num_destinatario = cellulare_cliente.strip().replace(" ", "")
         if not num_destinatario.startswith("+"):
             if num_destinatario.startswith("39"):
@@ -164,15 +172,14 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
             else:
                 num_destinatario = "+39" + num_destinatario
                 
-        testo_messaggio = f"Nova Servimpianti srls: Il tuo codice segreto di firma per l'intervento odierno e': {st.session_state['codice_sms']}"
+        testo_messaggio = f"Nova Servimpianti: Il tuo codice segreto di firma per l'intervento odierno e': {st.session_state['codice_sms']}"
         
         try:
             twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
-            # Invio reale forzato
             twilio_client.messages.create(body=testo_messaggio, from_=NUMERO_TWILIO, to=num_destinatario)
             st.success(f"📩 SMS inviato correttamente al numero {num_destinatario}!")
         except Exception as e:
-            st.error(f"❌ Errore critico Twilio: Impossibile inviare l'SMS. Verifica i Secrets o il numero acquistato. Dettaglio: {e}")
+            st.error(f"❌ Errore critico Twilio: {e}")
 
 if st.session_state["codice_sms"] is not None:
     st.info(f"👉 CODICE DI VALIDAZIONE D'EMERGENZA: {st.session_state['codice_sms']}")
@@ -187,36 +194,32 @@ if st.session_state["codice_sms"] is not None:
                 st.error("❌ Codice errato!")
     else:
         st.success("🔒 Convalidato con Successo!")
+
      
 # --- 3. LOGICA INVIO COPIA EMAIL GRAFICA IN HTML ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
     password_mittente = st.secrets["GMAIL_PASSWORD"]
     
-    # 1. EMAIL PER IL CLIENTE (GRAFICA IN HTML)
     msg_cli = MIMEMultipart('alternative')
     msg_cli['From'] = email_mittente
     msg_cli['To'] = destinatario
-    msg_cli['Subject'] = f"Rapporto Intervento Ufficiale - Nova Servimpianti Srls"
+    msg_cli['Subject'] = f"Rapporto Intervento Ufficiale - Nova Servimpianti"
     
-    # Struttura del testo in puro HTML con grafica e colori coordinati
     html_cliente = f"""
     <html>
     <body style="font-family: 'Segoe UI', Arial, sans-serif; color: #333333; margin: 0; padding: 0; background-color: #F7FAFC;">
         <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #E2E8F0; margin-top: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-            <!-- Header con Colore Aziendale -->
             <tr>
                 <td bgcolor="#1A365D" style="padding: 25px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">NOVA SERVIMPIANTI SRLS</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">NOVA SERVIMPIANTI</h1>
                     <p style="color: #90CDF4; margin: 5px 0 0 0; font-size: 13px;">Rapporto di Intervento Tecnico Ufficiale</p>
                 </td>
             </tr>
-            <!-- Corpo della Mail -->
             <tr>
                 <td style="padding: 30px;">
                     <p style="font-size: 16px; line-height: 24px; margin-top: 0;">Gentile Cliente,</p>
                     <p style="font-size: 15px; line-height: 24px;">Con la presente Le inviamo in allegato il <b>Rapporto d'Intervento Tecnico ufficiale</b> in formato PDF, relativo ai lavori eseguiti presso la Sua sede per l'azienda <b>{nome_cliente}</b>.</p>
-                    
                     <div style="background-color: #EDF2F7; border-left: 4px solid #2C5282; padding: 15px; margin: 25px 0; border-radius: 4px;">
                         <h3 style="margin: 0 0 10px 0; color: #2C5282; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Riepilogo Documento</h3>
                         <table width="100%" style="font-size: 14px; border-collapse: collapse;">
@@ -228,24 +231,14 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                                 <td style="padding: 5px 0; color: #4A5568;"><b>Firma Digitale:</b></td>
                                 <td style="padding: 5px 0; color: #1A202C;">✓ Verificata via SMS OTP</td>
                             </tr>
-                            <tr>
-                                <td style="padding: 5px 0; color: #4A5568;"><b>Archivio Storico:</b></td>
-                                <td style="padding: 5px 0; color: #1A202C;">Sincronizzato nel Database Cloud Nova</td>
-                            </tr>
                         </table>
                     </div>
-                    
-                    <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici (ore impiegate, chilometri percorsi, guasto riscontrato e materiali utilizzati, note extra e la documentazione fotografica della scheda macchina) direttamente all'interno del <b>file PDF allegato</b> a questa email.</p>
-                    
-                    <p style="font-size: 15px; line-height: 24px; margin-bottom: 0;">Restiamo a Sua completa disposizione per qualsiasi chiarimento e cogliamo l'occasione per porgerLe i nostri più cordiali saluti.</p>
+                    <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici direttamente all'interno del <b>file PDF allegato</b> a questa email.</p>
                 </td>
             </tr>
-            <!-- Footer Aziendale -->
             <tr>
                 <td bgcolor="#F7FAFC" style="padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #718096;">
-                    <b>Nova Servimpianti Srls</b><br/>
-                    Email Tecnica: franciosoandrea@icloud.com<br/>
-                    <span style="font-size: 11px; color: #A0AEC0; display: inline-block; margin-top: 10px;">Questa è una notifica automatica generata dal sistema gestionale Nova Report Pro.</span>
+                    <b>Nova Servimpianti</b><br/>Email Tecnica: franciosoandrea@gmail.com
                 </td>
             </tr>
         </table>
@@ -254,7 +247,6 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     """
     msg_cli.attach(MIMEText(html_cliente, 'html'))
     
-    # 2. EMAIL PER TE SU ICLOUD (Mantiene il formato classico con i doppi allegati)
     msg_teco = MIMEMultipart()
     msg_teco['From'] = email_mittente
     msg_teco['To'] = "franciosoandrea@me.com"
@@ -262,7 +254,6 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     msg_teco.attach(MIMEText("Rapporto registrato correttamente nel database.\nIn allegato trovi il PDF dell'intervento e il file Excel Generale aggiornato.", 'plain'))
     
     try:
-        # Allega il PDF all'email del cliente
         with open(allegato_path, "rb") as att_pdf:
             part_pdf = MIMEBase("application", "octet-stream")
             part_pdf.set_payload(att_pdf.read())
@@ -270,7 +261,6 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             part_pdf.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
             msg_cli.attach(part_pdf)
             
-            # Crea la copia separata del PDF per la tua email di backup
             part_pdf_teco = MIMEBase("application", "octet-stream")
             att_pdf.seek(0)
             part_pdf_teco.set_payload(att_pdf.read())
@@ -278,7 +268,6 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             part_pdf_teco.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
             msg_teco.attach(part_pdf_teco)
             
-        # Allega il file Excel Generale solo alla tua email di backup su iCloud
         if os.path.exists(EXCEL_FILE):
             with open(EXCEL_FILE, "rb") as att_ex:
                 part_ex = MIMEBase("application", "octet-stream")
@@ -287,22 +276,17 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                 part_ex.add_header("Content-Disposition", f"attachment; filename= {EXCEL_FILE}")
                 msg_teco.attach(part_ex)
                 
-        # Spedizione tramite server SMTP
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("://gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
-        
-        # Spedisce la mail grafica al cliente
         server.sendmail(email_mittente, destinatario, msg_cli.as_string())
-        # Spedisce la mail di archivio con Excel a te su iCloud
         server.sendmail(email_mittente, "franciosoandrea@me.com", msg_teco.as_string())
         server.quit()
-        
         st.success("✉️ Documenti inviati! Email grafica con PDF inviata al cliente, PDF + Excel Storico inviati a franciosoandrea@me.com")
     except Exception as e:
         st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
 
-# --- 4. CREAZIONE PDF CON LINK GOOGLE MAPS E FOTO MULTIPLE ---
+# --- 4. CREAZIONE PDF CON INTETSTAZIONE DETTAGLIATA ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, note_extra, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -330,7 +314,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     <b>Numero Cellulare:</b> {cellulare_cliente}<br/>
     <b>Marchio Apparecchio:</b> {marchio} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/>
     <b>Kilometri Percorsi:</b> {km} Km &nbsp;&nbsp;|&nbsp;&nbsp; <b>Ore Lavoro Impiegate:</b> {ore_lavoro}<br/>
-    <b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Intervento Urgente:</b> {urgente}
+    <b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Intervento Urgente:</b> {urgent}
     """
     story.append(Paragraph(dati_strutturati, body_style))
     story.append(Spacer(1, 15))
@@ -341,13 +325,11 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph("<b>■ LAVORI ESEGUITI E MATERIALI UTILIZZATI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     
-    # === NUOVA SEZIONE NOTE STAMPATA NEL PDF ===
     if note_extra:
         story.append(Paragraph("<b>■ NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
         story.append(Paragraph(note_extra, body_style))
         
     story.append(Spacer(1, 15))
-    
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
     story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
     
@@ -357,7 +339,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         story.append(Paragraph(f"📍 <i>Posizione GPS: Non disponibile o non autorizzata</i>", firma_style))
         
     story.append(Spacer(1, 15))
-    
     story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
     story.append(Paragraph(f"<i>■ {stringa_firma}</i>", firma_style))
     
@@ -384,8 +365,8 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         "Cellulare Cliente": cellulare_cliente,
         "Marchio Apparecchio": marchio,
         "Matricola": matricola if matricola else "N.D.",
-        "Guasto Segnalato e materiali utilizzati": guasto_segnalato if guasto_segnalato else "N.D.",
-        "Intervento Eseguito": descrizione_lavori,
+        "Guasto Segnalato": guasto_segnalato if guasto_segnalato else "N.D.",
+        "Intervento Eseguito e Materiali Utilizzati": descrizione_lavori,
         "Note Extra": note_extra if note_extra else "N.D.", # Aggiunta la colonna Note nel dizionario dati
         "Km Percorsi": km,
         "Ore Lavoro": ore_lavoro,
