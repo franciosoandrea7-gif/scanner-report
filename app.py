@@ -196,7 +196,6 @@ if st.session_state["codice_sms"] is not None:
     else:
         st.success("🔒 Convalidato con Successo!")
 
-     
 # --- 3. LOGICA INVIO COPIA EMAIL GRAFICA IN HTML ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
@@ -213,8 +212,8 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #E2E8F0; margin-top: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
             <tr>
                 <td bgcolor="#1A365D" style="padding: 25px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">NOVA SERVIMPIANTI</h1>
-                    <p style="color: #90CDF4; margin: 5px 0 0 0; font-size: 13px;">Rapporto di Intervento Tecnico Ufficiale</p>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">NOVA SERVIMPIANTI SRLS</h1>
+                    <p style="color: #90CDF4; margin: 5px 0 0 0; font-size: 13px;">Rapporto di Intervento Técnico Ufficiale</p>
                 </td>
             </tr>
             <tr>
@@ -234,12 +233,12 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                             </tr>
                         </table>
                     </div>
-                    <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici direttamente all'interno del <b>file PDF allegato</b> a questa email.</p>
+                    <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici direttamente all'interno del <b>file PDF allegato</b> a questa email. Per qualsiasi chiarimento non esitate a contattarci porgiamo distinti saluti .</p>
                 </td>
             </tr>
             <tr>
                 <td bgcolor="#F7FAFC" style="padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #718096;">
-                    <b>Nova Servimpianti</b><br/>Email Tecnica: franciosoandrea@gmail.com
+                    <b>Nova Servimpianti Srls</b><br/>Email Tecnica: franciosoandrea@me.com
                 </td>
             </tr>
         </table>
@@ -277,7 +276,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                 part_ex.add_header("Content-Disposition", f"attachment; filename= {EXCEL_FILE}")
                 msg_teco.attach(part_ex)
                 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("://gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg_cli.as_string())
@@ -286,7 +285,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         st.success("✉️ Documenti inviati! Email grafica con PDF inviata al cliente, PDF + Excel Storico inviati a franciosoandrea@me.com")
     except Exception as e:
         st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
-
+     
 # --- 4. CREAZIONE PDF CON LINK GOOGLE MAPS E FOTO MULTIPLE ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, note_extra, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
