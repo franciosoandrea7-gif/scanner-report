@@ -237,7 +237,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                     
                     <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici (ore impiegate, chilometri percorsi, guasto riscontrato, note extra e la documentazione fotografica della scheda macchina) direttamente all'interno del <b>file PDF allegato</b> a questa email.</p>
                     
-                    <p style="font-size: 15px; line-height: 24px; margin-bottom: 0;">Restiamo a Sua completa disposizione per qualsiasi chiarimento Cogliamo L'occasione per Porgervi cordiali saluti.</p>
+                    <p style="font-size: 15px; line-height: 24px; margin-bottom: 0;">Restiamo a Sua completa disposizione per qualsiasi chiarimento e cogliamo l'occasione per porgerLe i nostri più cordiali saluti.</p>
                 </td>
             </tr>
             <!-- Footer Aziendale -->
