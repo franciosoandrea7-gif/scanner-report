@@ -394,13 +394,15 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         firma_tecnico_str = tecnico_selezionato
         stringa_firma_cli = f"Firmato via SMS OTP (Cell: {cellulare_cliente}) il {data_str} (ID-{st.session_state['codice_sms']})"
         
-        registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma_cli, gps_final_link)
+        # INSERITA LA VOCE MANCANTE: note_extra
+        registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma_cli, gps_final_link)
         
         c_pulito = cliente.replace(" ", "_").replace("/", "_")
         pdf_filename = f"Report_{data_corrente.strftime('%Y%m%d')}_{c_pulito}.pdf"
         st.session_state["ultimo_pdf"] = pdf_filename
         
-        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, file_immagini_caricate, stringa_firma_cli, firma_tecnico_str, gps_final_link)
+        # INSERITA LA VOCE MANCANTE: note_extra
+        elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgente, guasto_segnalato, descrizione_lavori, note_extra, file_immagini_caricate, stringa_firma_cli, firma_tecnico_str, gps_final_link)
         
         st.success("🎉 Registrato correttamente!")
         st.session_state["mostra_download"] = True
@@ -415,4 +417,3 @@ if st.session_state["mostra_download"]:
     if st.session_state["ultimo_pdf"] and os.path.exists(st.session_state["ultimo_pdf"]):
         with open(st.session_state["ultimo_pdf"], "rb") as f_pd:
             st.download_button("📥 Scarica Questo PDF", f_pd, file_name=st.session_state["ultimo_pdf"], key="b_pd")
-
