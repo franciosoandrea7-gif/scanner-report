@@ -24,10 +24,10 @@ LOGO_FILE = "logo.png"
 # --- CONFIGURAZIONE TEAM TECNICI E PIN SEGRETI ---
 TECNICI = {
     "Andrea Francioso": "1974",
-    "Daniele Gennari 1": "1990",
-    "Lidia Distratis 2": "1977",
-    "Nome Dipendente 3": "3415",
-    "Nome Dipendente 4": "7712"
+    "Daniele Gennari ": "1990",
+    "Lidia Distratis ": "1977",
+    "Nome Dipendente ": "3415",
+    "Nome Dipendente ": "7712"
 }
 
 if "codice_sms" not in st.session_state:
@@ -115,6 +115,7 @@ marchio = st.text_input("Marchio Apparecchio *")
 matricola = st.text_input("Matricola Apparecchio")
 guasto_segnalato = st.text_area("Guasto Segnalato")
 descrizione_lavori = st.text_area("Intervento Eseguito *")
+note_extra = st.text_area("Note Extra / Ricambi da ordinare")
 km = st.number_input("Kilometri percorsi (Km)", min_value=0, value=0)
 ore_lavoro = st.number_input("Ore di lavoro impiegate", min_value=0.0, value=0.0)
 preventivo = st.radio("Richiedi Preventivo?", ["NO", "SI"])
@@ -239,7 +240,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
 
 # --- 4. CREAZIONE PDF CON LINK GOOGLE MAPS E FOTO MULTIPLE ---
-def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
+def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, note_extra, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
@@ -259,7 +260,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     
-    # DATI DELL'INTERVENTO STRUTTURATI IN LINEA PER UNA MAGGIORE LEGGIBILITÀ E ORDINE VISIVO
     dati_strutturati = f"""
     <b>Data Intervento:</b> {data_str}<br/>
     <b>Cliente / Ragione Sociale:</b> {cliente}<br/>
@@ -267,7 +267,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     <b>Numero Cellulare:</b> {cellulare_cliente}<br/>
     <b>Marchio Apparecchio:</b> {marchio} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/>
     <b>Kilometri Percorsi:</b> {km} Km &nbsp;&nbsp;|&nbsp;&nbsp; <b>Ore Lavoro Impiegate:</b> {ore_lavoro}<br/>
-    <b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Intervento Urgente:</b> {urgent}
+    <b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Intervento Urgente:</b> {urgente}
     """
     story.append(Paragraph(dati_strutturati, body_style))
     story.append(Spacer(1, 15))
@@ -277,6 +277,12 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     
     story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
+    
+    # === NUOVA SEZIONE NOTE STAMPATA NEL PDF ===
+    if note_extra:
+        story.append(Paragraph("<b>■ NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
+        story.append(Paragraph(note_extra, body_style))
+        
     story.append(Spacer(1, 15))
     
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
@@ -304,7 +310,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
             story.append(RLImage(temp_path, width=440, height=280))
             
     doc.build(story)
-
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS SU EXCEL ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
