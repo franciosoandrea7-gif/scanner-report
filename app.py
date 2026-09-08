@@ -114,7 +114,7 @@ cellulare_cliente = st.text_input("Numero Cellulare Cliente *")
 marchio = st.text_input("Marchio Apparecchio *")
 matricola = st.text_input("Matricola Apparecchio")
 guasto_segnalato = st.text_area("Guasto Segnalato")
-descrizione_lavori = st.text_area("Intervento Eseguito *")
+descrizione_lavori = st.text_area("Intervento Eseguito e Materiali Utilizzati *")
 note_extra = st.text_area("Note Extra / Ricambi da ordinare")
 km = st.number_input("Kilometri percorsi (Km)", min_value=0, value=0)
 ore_lavoro = st.number_input("Ore di lavoro impiegate", min_value=0.0, value=0.0)
@@ -164,7 +164,7 @@ if st.button("📲 INVIA CODICE DI VALIDAZIONE VIA SMS"):
             else:
                 num_destinatario = "+39" + num_destinatario
                 
-        testo_messaggio = f"Nova Servimpianti: Il tuo codice segreto di firma per l'intervento odierno e': {st.session_state['codice_sms']}"
+        testo_messaggio = f"Nova Servimpianti srls: Il tuo codice segreto di firma per l'intervento odierno e': {st.session_state['codice_sms']}"
         
         try:
             twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
@@ -235,7 +235,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                         </table>
                     </div>
                     
-                    <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici (ore impiegate, chilometri percorsi, guasto riscontrato, note extra e la documentazione fotografica della scheda macchina) direttamente all'interno del <b>file PDF allegato</b> a questa email.</p>
+                    <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici (ore impiegate, chilometri percorsi, guasto riscontrato e materiali utilizzati, note extra e la documentazione fotografica della scheda macchina) direttamente all'interno del <b>file PDF allegato</b> a questa email.</p>
                     
                     <p style="font-size: 15px; line-height: 24px; margin-bottom: 0;">Restiamo a Sua completa disposizione per qualsiasi chiarimento e cogliamo l'occasione per porgerLe i nostri più cordiali saluti.</p>
                 </td>
@@ -338,7 +338,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
     
-    story.append(Paragraph("<b>■ LAVORI ESEGUITI</b>", section_heading))
+    story.append(Paragraph("<b>■ LAVORI ESEGUITI E MATERIALI UTILIZZATI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     
     # === NUOVA SEZIONE NOTE STAMPATA NEL PDF ===
@@ -384,7 +384,7 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         "Cellulare Cliente": cellulare_cliente,
         "Marchio Apparecchio": marchio,
         "Matricola": matricola if matricola else "N.D.",
-        "Guasto Segnalato": guasto_segnalato if guasto_segnalato else "N.D.",
+        "Guasto Segnalato e materiali utilizzati": guasto_segnalato if guasto_segnalato else "N.D.",
         "Intervento Eseguito": descrizione_lavori,
         "Note Extra": note_extra if note_extra else "N.D.", # Aggiunta la colonna Note nel dizionario dati
         "Km Percorsi": km,
@@ -413,7 +413,7 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
         df_nuovo = pd.DataFrame([riga])
         
     # Aggiunta la colonna "Note Extra" nell'ordine corretto delle colonne del file Excel
-    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito", "Note Extra", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente", "Link Google Maps GPS"]
+    colonne_ordinate = ["Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", "Email Cliente", "Cellulare Cliente", "Marchio Apparecchio", "Matricola", "Guasto Segnalato", "Intervento Eseguito e materiali utilizzati", "Note Extra", "Km Percorsi", "Ore Lavoro", "Richiede Preventivo?", "Intervento Urgente?", "Firma Cliente", "Link Google Maps GPS"]
     df_nuovo = df_nuovo.reindex(columns=colonne_ordinate)
     
     modalita = 'a' if os.path.exists(EXCEL_FILE) else 'w'
