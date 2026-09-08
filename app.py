@@ -197,7 +197,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     msg_cli = MIMEMultipart('alternative')
     msg_cli['From'] = email_mittente
     msg_cli['To'] = destinatario
-    msg_cli['Subject'] = f"Rapporto Intervento Ufficiale - Nova Servimpianti"
+    msg_cli['Subject'] = f"Rapporto Intervento Ufficiale - Nova Servimpianti Srls"
     
     # Struttura del testo in puro HTML con grafica e colori coordinati
     html_cliente = f"""
@@ -207,7 +207,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             <!-- Header con Colore Aziendale -->
             <tr>
                 <td bgcolor="#1A365D" style="padding: 25px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">NOVA SERVIMPIANTI</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">NOVA SERVIMPIANTI SRLS</h1>
                     <p style="color: #90CDF4; margin: 5px 0 0 0; font-size: 13px;">Rapporto di Intervento Tecnico Ufficiale</p>
                 </td>
             </tr>
@@ -237,14 +237,14 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                     
                     <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici (ore impiegate, chilometri percorsi, guasto riscontrato, note extra e la documentazione fotografica della scheda macchina) direttamente all'interno del <b>file PDF allegato</b> a questa email.</p>
                     
-                    <p style="font-size: 15px; line-height: 24px; margin-bottom: 0;">Restiamo a Sua completa disposizione per qualsiasi chiarimento o necessità future.</p>
+                    <p style="font-size: 15px; line-height: 24px; margin-bottom: 0;">Restiamo a Sua completa disposizione per qualsiasi chiarimento Cogliamo L'occasione per Porgervi cordiali saluti.</p>
                 </td>
             </tr>
             <!-- Footer Aziendale -->
             <tr>
                 <td bgcolor="#F7FAFC" style="padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #718096;">
-                    <b>Nova Servimpianti</b><br/>
-                    Email Tecnica: franciosoandrea@gmail.com<br/>
+                    <b>Nova Servimpianti Srls</b><br/>
+                    Email Tecnica: franciosoandrea@icloud.com<br/>
                     <span style="font-size: 11px; color: #A0AEC0; display: inline-block; margin-top: 10px;">Questa è una notifica automatica generata dal sistema gestionale Nova Report Pro.</span>
                 </td>
             </tr>
