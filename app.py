@@ -187,19 +187,74 @@ if st.session_state["codice_sms"] is not None:
                 st.error("❌ Codice errato!")
     else:
         st.success("🔒 Convalidato con Successo!")
-
-        
-# --- 3. LOGICA INVIO COPIA EMAIL ---
+     
+# --- 3. LOGICA INVIO COPIA EMAIL GRAFICA IN HTML ---
 def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     email_mittente = "franciosoandrea@gmail.com" 
     password_mittente = st.secrets["GMAIL_PASSWORD"]
     
-    msg_cli = MIMEMultipart()
+    # 1. EMAIL PER IL CLIENTE (GRAFICA IN HTML)
+    msg_cli = MIMEMultipart('alternative')
     msg_cli['From'] = email_mittente
     msg_cli['To'] = destinatario
-    msg_cli['Subject'] = f"Report Intervento - {nome_cliente}"
-    msg_cli.attach(MIMEText("Buongiorno, in allegato copia del rapporto ufficiale Nova Servimpianti.\n\nCordiali Saluti.", 'plain'))
+    msg_cli['Subject'] = f"Rapporto Intervento Ufficiale - Nova Servimpianti"
     
+    # Struttura del testo in puro HTML con grafica e colori coordinati
+    html_cliente = f"""
+    <html>
+    <body style="font-family: 'Segoe UI', Arial, sans-serif; color: #333333; margin: 0; padding: 0; background-color: #F7FAFC;">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #E2E8F0; margin-top: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <!-- Header con Colore Aziendale -->
+            <tr>
+                <td bgcolor="#1A365D" style="padding: 25px; text-align: center;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">NOVA SERVIMPIANTI</h1>
+                    <p style="color: #90CDF4; margin: 5px 0 0 0; font-size: 13px;">Rapporto di Intervento Tecnico Ufficiale</p>
+                </td>
+            </tr>
+            <!-- Corpo della Mail -->
+            <tr>
+                <td style="padding: 30px;">
+                    <p style="font-size: 16px; line-height: 24px; margin-top: 0;">Gentile Cliente,</p>
+                    <p style="font-size: 15px; line-height: 24px;">Con la presente Le inviamo in allegato il <b>Rapporto d'Intervento Tecnico ufficiale</b> in formato PDF, relativo ai lavori eseguiti presso la Sua sede per l'azienda <b>{nome_cliente}</b>.</p>
+                    
+                    <div style="background-color: #EDF2F7; border-left: 4px solid #2C5282; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                        <h3 style="margin: 0 0 10px 0; color: #2C5282; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Riepilogo Documento</h3>
+                        <table width="100%" style="font-size: 14px; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 5px 0; color: #4A5568;" width="40%"><b>Stato Intervento:</b></td>
+                                <td style="padding: 5px 0; color: #1A202C;">■ Chiuso e Convalidato</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 0; color: #4A5568;"><b>Firma Digitale:</b></td>
+                                <td style="padding: 5px 0; color: #1A202C;">✓ Verificata via SMS OTP</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 0; color: #4A5568;"><b>Archivio Storico:</b></td>
+                                <td style="padding: 5px 0; color: #1A202C;">Sincronizzato nel Database Cloud Nova</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p style="font-size: 14px; line-height: 22px; color: #718096;">Troverà tutti i dettagli analitici (ore impiegate, chilometri percorsi, guasto riscontrato, note extra e la documentazione fotografica della scheda macchina) direttamente all'interno del <b>file PDF allegato</b> a questa email.</p>
+                    
+                    <p style="font-size: 15px; line-height: 24px; margin-bottom: 0;">Restiamo a Sua completa disposizione per qualsiasi chiarimento o necessità future.</p>
+                </td>
+            </tr>
+            <!-- Footer Aziendale -->
+            <tr>
+                <td bgcolor="#F7FAFC" style="padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 12px; color: #718096;">
+                    <b>Nova Servimpianti</b><br/>
+                    Email Tecnica: franciosoandrea@gmail.com<br/>
+                    <span style="font-size: 11px; color: #A0AEC0; display: inline-block; margin-top: 10px;">Questa è una notifica automatica generata dal sistema gestionale Nova Report Pro.</span>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    msg_cli.attach(MIMEText(html_cliente, 'html'))
+    
+    # 2. EMAIL PER TE SU ICLOUD (Mantiene il formato classico con i doppi allegati)
     msg_teco = MIMEMultipart()
     msg_teco['From'] = email_mittente
     msg_teco['To'] = "franciosoandrea@me.com"
@@ -207,6 +262,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
     msg_teco.attach(MIMEText("Rapporto registrato correttamente nel database.\nIn allegato trovi il PDF dell'intervento e il file Excel Generale aggiornato.", 'plain'))
     
     try:
+        # Allega il PDF all'email del cliente
         with open(allegato_path, "rb") as att_pdf:
             part_pdf = MIMEBase("application", "octet-stream")
             part_pdf.set_payload(att_pdf.read())
@@ -214,6 +270,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             part_pdf.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
             msg_cli.attach(part_pdf)
             
+            # Crea la copia separata del PDF per la tua email di backup
             part_pdf_teco = MIMEBase("application", "octet-stream")
             att_pdf.seek(0)
             part_pdf_teco.set_payload(att_pdf.read())
@@ -221,6 +278,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             part_pdf_teco.add_header("Content-Disposition", f"attachment; filename= {allegato_path}")
             msg_teco.attach(part_pdf_teco)
             
+        # Allega il file Excel Generale solo alla tua email di backup su iCloud
         if os.path.exists(EXCEL_FILE):
             with open(EXCEL_FILE, "rb") as att_ex:
                 part_ex = MIMEBase("application", "octet-stream")
@@ -229,13 +287,18 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                 part_ex.add_header("Content-Disposition", f"attachment; filename= {EXCEL_FILE}")
                 msg_teco.attach(part_ex)
                 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        # Spedizione tramite server SMTP
+        server = smtplib.SMTP("://gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
+        
+        # Spedisce la mail grafica al cliente
         server.sendmail(email_mittente, destinatario, msg_cli.as_string())
+        # Spedisce la mail di archivio con Excel a te su iCloud
         server.sendmail(email_mittente, "franciosoandrea@me.com", msg_teco.as_string())
         server.quit()
-        st.success("✉️ Documenti inviati! PDF inviato al cliente, PDF + Excel Storico inviati a franciosoandrea@me.com")
+        
+        st.success("✉️ Documenti inviati! Email grafica con PDF inviata al cliente, PDF + Excel Storico inviati a franciosoandrea@me.com")
     except Exception as e:
         st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
 
