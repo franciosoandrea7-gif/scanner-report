@@ -213,7 +213,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
             <tr>
                 <td bgcolor="#1A365D" style="padding: 25px; text-align: center;">
                     <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">NOVA SERVIMPIANTI SRLS</h1>
-                    <p style="color: #90CDF4; margin: 5px 0 0 0; font-size: 13px;">Rapporto di Intervento Técnico Ufficiale</p>
+                    <p style="color: #90CDF4; margin: 5px 0 0 0; font-size: 13px;">Rapporto di Intervento Tecnico Ufficiale</p>
                 </td>
             </tr>
             <tr>
