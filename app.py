@@ -87,6 +87,25 @@ with st.expander("📂 Recupera Vecchi Report PDF Emessi"):
     else:
         st.info("ℹ️ Nessun PDF in archivio.")
 
+
+# --- 0. ARCHIVIO PDF CON RICERCA VELOCE ---
+with st.expander("📂 Recupera Vecchi Report PDF Emessi"):
+    lista_pdf = [f for f in os.listdir(".") if f.startswith("Report_") and f.endswith(".pdf")]
+    if len(lista_pdf) > 0:
+        lista_pdf.sort(reverse=True)
+        cerca_pdf = st.text_input("🔍 Cerca PDF per nome cliente:", "").strip().lower()
+        for nome_pdf in lista_pdf:
+            if cerca_pdf and cerca_pdf not in nome_pdf.lower():
+                continue
+            col_n, col_b = st.columns(2)
+            with col_n:
+                st.write(f"📄 {nome_pdf.replace('Report_', '').replace('.pdf', '')}")
+            with col_b:
+                with open(nome_pdf, "rb") as f_pdf:
+                    st.download_button("📥 Scarica", f_pdf, file_name=nome_pdf, key=f"st_{nome_pdf}")
+    else:
+        st.info("ℹ️ Nessun PDF in archivio.")
+
 # --- SEZIONE SELEZIONE E FIRMA TECNICO ---
 st.subheader("👨‍🔧 Responsabile Intervento")
 tecnico_selezionato = st.selectbox("Seleziona il tuo nome dal personale Nova:", list(TECNICI.keys()))
@@ -106,14 +125,32 @@ data_corrente = st.date_input("Data Intervento", datetime.now())
 
 cliente_selezionato_menu = st.selectbox("Seleziona Cliente *", opzioni_menu_clienti, key="main_select_client")
 
+# Inizializziamo i valori predefiniti vuoti per email e cellulare
+email_predefinita = ""
+cellulare_predefinito = ""
+
 if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE":
     nuovo_cliente_input = st.text_input("Inserisci Nuova Ragione Sociale Cliente *", key="new_client_name_input")
     cliente = nuovo_cliente_input.strip() if nuovo_cliente_input else ""
 else:
     cliente = cliente_selezionato_menu
+    # RECUPERO AUTOMATICO EMAIL E CELLULARE STORICI DAL FOGLIO EXCEL DEL CLIENTE
+    if os.path.exists(EXCEL_FILE):
+        try:
+            nome_foglio = cliente.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("?", "_").replace("*", "_")[:30]
+            df_storico = pd.read_excel(EXCEL_FILE, sheet_name=nome_foglio)
+            if not df_storico.empty:
+                # Prendiamo i dati dell'ultima riga inserita per questo specifico cliente
+                if "Email Cliente" in df_storico.columns and pd.notna(df_storico["Email Cliente"].iloc[-1]):
+                    email_predefinita = str(df_storico["Email Cliente"].iloc[-1]).strip()
+                if "Cellulare Cliente" in df_storico.columns and pd.notna(df_storico["Cellulare Cliente"].iloc[-1]):
+                    cellulare_predefinito = str(df_storico["Cellulare Cliente"].iloc[-1]).strip()
+        except Exception:
+            pass
 
-email_cliente = st.text_input("Email Cliente *")
-cellulare_cliente = st.text_input("Numero Cellulare Cliente *")
+# I campi caricano i dati storici se presenti, rimanendo comunque modificabili liberamente
+email_cliente = st.text_input("Email Cliente *", value=email_predefinita)
+cellulare_cliente = st.text_input("Numero Cellulare Cliente *", value=cellulare_predefinito)
 
 # === CAMPO INSERITO: PROPRIETARIO NUMERO / FIRMATARIO ===
 firmatario_cliente = st.text_input("Nome di chi firma l'SMS (es. Sig. Mario Rossi) *")
@@ -142,7 +179,6 @@ else:
     st.info("ℹ️ Consenti l'accesso alla geolocalizzazione se richiesto dal telefono per tracciare la firma d'intervento.")
 
 file_immagini_caricate = st.file_uploader("📸 Carica o Scatta Foto dell'Intervento (Massimo 4 foto)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-
 
 # --- 2. GESTIONE SMS ---
 st.subheader("🔒 Firma Digitale SMS Cliente")
@@ -276,7 +312,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
                 part_ex.add_header("Content-Disposition", f"attachment; filename= {EXCEL_FILE}")
                 msg_teco.attach(part_ex)
                 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("://gmail.com", 587)
         server.starttls()
         server.login(email_mittente, password_mittente)
         server.sendmail(email_mittente, destinatario, msg_cli.as_string())
@@ -285,7 +321,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         st.success("✉️ Documenti inviati! Email grafica con PDF inviata al cliente, PDF + Excel Storico inviati a franciosoandrea@me.com")
     except Exception as e:
         st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
-     
+
 # --- 4. CREAZIONE PDF CON LINK GOOGLE MAPS E FOTO MULTIPLE ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, note_extra, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
@@ -307,7 +343,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     
-    # Sistemato {urgent} per combaciare con il parametro della funzione e aggiunto il firmatario
     dati_strutturati = f"""
     <b>Data Intervento:</b> {data_str}<br/>
     <b>Cliente / Ragione Sociale:</b> {cliente}<br/>
@@ -358,7 +393,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
             story.append(RLImage(temp_path, width=440, height=280))
             
     doc.build(story)
-
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS E NOTE SU EXCEL ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
