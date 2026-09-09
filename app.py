@@ -74,7 +74,8 @@ with st.expander("📂 Recupera Vecchi Report PDF Emessi"):
     lista_pdf = [f for f in os.listdir(".") if f.startswith("Report_") and f.endswith(".pdf")]
     if len(lista_pdf) > 0:
         lista_pdf.sort(reverse=True)
-        cerca_pdf = st.text_input("🔍 Cerca PDF per nome cliente:", "").strip().lower()
+        # AGGIUNTA LA CHIAVE UNIVOCA KEY PER EVITARE IL DUPLICATO
+        cerca_pdf = st.text_input("🔍 Cerca PDF per nome cliente:", "", key="filtro_ricerca_pdf_storico").strip().lower()
         for nome_pdf in lista_pdf:
             if cerca_pdf and cerca_pdf not in nome_pdf.lower():
                 continue
@@ -86,7 +87,6 @@ with st.expander("📂 Recupera Vecchi Report PDF Emessi"):
                     st.download_button("📥 Scarica", f_pdf, file_name=nome_pdf, key=f"st_{nome_pdf}")
     else:
         st.info("ℹ️ Nessun PDF in archivio.")
-
 
 # --- 0. ARCHIVIO PDF CON RICERCA VELOCE ---
 with st.expander("📂 Recupera Vecchi Report PDF Emessi"):
