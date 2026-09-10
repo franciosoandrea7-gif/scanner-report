@@ -329,33 +329,33 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     
-    # === STRUTTURA DESIGN: TABELLA NITIDA SU DUE COLONNE PERFETTAMENTE INCOLONNATE ===
+    # === STRUTTURA DESIGN CON TITOLI IN BLU (#1A365D) E VALORI IN NERO ===
     dati_tabella = [
-        [Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style), 
-         Paragraph(f"<b>Marchio Apparecchio:</b> {marchio}", body_style)],
+        [Paragraph(f"<font color='#1A365D'><b>Data Intervento:</b></font> {data_str}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Marchio Apparecchio:</b></font> {marchio}", body_style)],
          
-        [Paragraph(f"<b>Cliente / Ragione Sociale:</b> {cliente}", body_style), 
-         Paragraph(f"<b>Matricola:</b> {matricola if matricola else 'N.D.'}", body_style)],
+        [Paragraph(f"<font color='#1A365D'><b>Cliente / Ragione Sociale:</b></font> {cliente}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Matricola:</b></font> {matricola if matricola else 'N.D.'}", body_style)],
          
-        [Paragraph(f"<b>Email Cliente:</b> {email_cliente}", body_style), 
-         Paragraph(f"<b>Kilometri Percorsi:</b> {km} Km", body_style)],
+        [Paragraph(f"<font color='#1A365D'><b>Email Cliente:</b></font> {email_cliente}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Kilometri Percorsi:</b></font> {km} Km", body_style)],
          
-        [Paragraph(f"<b>Numero Cellulare:</b> {cellulare_cliente}", body_style), 
-         Paragraph(f"<b>Ore Lavoro Impiegate:</b> {ore_lavoro}", body_style)],
+        [Paragraph(f"<font color='#1A365D'><b>Numero Cellulare:</b></font> {cellulare_cliente}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Ore Lavoro Impiegate:</b></font> {ore_lavoro}", body_style)],
          
-        [Paragraph(f"<b>Firmatario/Collaboratore:</b> {firmatario if firmatario else 'N.D.'}", body_style), 
-         Paragraph(f"<b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Urgente:</b> {urgent}", body_style)]
+        [Paragraph(f"<font color='#1A365D'><b>Firmatario/Collaboratore:</b></font> {firmatario if firmatario else 'N.D.'}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Richiede Preventivo:</b></font> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <font color='#1A365D'><b>Urgente:</b></font> {urgent}", body_style)]
     ]
     
-    # Ripartizione esatta della larghezza (530 totali utili stampabili sul foglio letter)
+    # Ripartizione esatta della larghezza (530 pixel utili)
     tabella_dati = Table(dati_tabella, colWidths=[265, 265])
     
-    # Stile della tabella: linee di design grigie orizzontali sottili ed eleganti
+    # Stile tabella con spaziatura ariosa e linee grigie eleganti sotto ogni riga
     tabella_dati.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")), # Linee di design pulite
+        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
     ]))
     
     story.append(tabella_dati)
@@ -367,7 +367,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(Paragraph("<b>■ LAVORI ESEGUITI E MATERIALI UTILIZZATI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     
-    # === NUOVA SEZIONE NOTE STAMPATA NEL PDF ===
+    # === SEZIONE NOTE STAMPATA NEL PDF ===
     if note_extra:
         story.append(Paragraph("<b>■ NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
         story.append(Paragraph(note_extra, body_style))
