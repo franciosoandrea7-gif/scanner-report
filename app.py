@@ -317,7 +317,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     
     # === FUNZIONE INTERNA CHE DISEGNA LO SFONDO SFUMATO DIETRO AI TESTI ===
     def disegna_sfondo_sfumato(canvas, doc):
-        SFONDO_FILE = "sfondo.png"  # L'immagine che hai caricato su GitHub
+        SFONDO_FILE = "sfondo.png.jpg"  # L'immagine che hai caricato su GitHub
         if os.path.exists(SFONDO_FILE):
             canvas.saveState()
             # Impostiamo la trasparenza (0.05 è sfumatissimo, perfetto per non dare fastidio alla lettura)
