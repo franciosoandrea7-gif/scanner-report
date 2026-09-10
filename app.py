@@ -104,35 +104,39 @@ if pin_tecnico:
 st.subheader("👤 Dati Intervento")
 data_corrente = st.date_input("Data Intervento", datetime.now())
 
-cliente_selezionato_menu = st.selectbox("Seleziona Cliente *", opzioni_menu_clienti, key="main_select_client")
+# Funzione per forzare l'autocompilazione immediata nello schermo di Streamlit appena cambia il cliente
+def aggiorna_dati_cliente():
+    scelta = st.session_state["main_select_client"]
+    if scelta != "➕ AGGIUNGI NUOVO CLIENTE":
+        st.session_state["email_manual_input"] = ""
+        st.session_state["cellulare_manual_input"] = ""
+        if os.path.exists(EXCEL_FILE):
+            try:
+                nome_foglio = scelta.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("?", "_").replace("*", "_")[:30]
+                df_storico = pd.read_excel(EXCEL_FILE, sheet_name=nome_foglio)
+                if not df_storico.empty:
+                    if "Email Cliente" in df_storico.columns and pd.notna(df_storico["Email Cliente"].iloc[-1]):
+                        st.session_state["email_manual_input"] = str(df_storico["Email Cliente"].iloc[-1]).strip()
+                    if "Cellulare Cliente" in df_storico.columns and pd.notna(df_storico["Cellulare Cliente"].iloc[-1]):
+                        st.session_state["cellulare_manual_input"] = str(df_storico["Cellulare Cliente"].iloc[-1]).strip()
+            except Exception:
+                pass
+    else:
+        st.session_state["email_manual_input"] = ""
+        st.session_state["cellulare_manual_input"] = ""
 
-# Inizializziamo le variabili per auto-compilare i campi
-email_predefinita = ""
-cellulare_predefinito = ""
+# Menu a tendina del cliente con la funzione on_change attivata
+cliente_selezionato_menu = st.selectbox("Seleziona Cliente *", opzioni_menu_clienti, key="main_select_client", on_change=aggiorna_dati_cliente)
 
-# Se il cliente è già nell'elenco, estraiamo subito i suoi dati storici da Excel
-if cliente_selezionato_menu != "➕ AGGIUNGI NUOVO CLIENTE":
-    cliente = cliente_selezionato_menu
-    if os.path.exists(EXCEL_FILE):
-        try:
-            nome_foglio = cliente.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("?", "_").replace("*", "_")[:30]
-            df_storico = pd.read_excel(EXCEL_FILE, sheet_name=nome_foglio)
-            if not df_storico.empty:
-                # Recuperiamo l'ultima email e l'ultimo telefono salvati per questo specifico cliente
-                if "Email Cliente" in df_storico.columns and pd.notna(df_storico["Email Cliente"].iloc[-1]):
-                    email_predefinita = str(df_storico["Email Cliente"].iloc[-1]).strip()
-                if "Cellulare Cliente" in df_storico.columns and pd.notna(df_storico["Cellulare Cliente"].iloc[-1]):
-                    cellulare_predefinito = str(df_storico["Cellulare Cliente"].iloc[-1]).strip()
-        except Exception:
-            pass
-else:
-    # Se invece si clicca su "Aggiungi nuovo cliente", mostriamo la casella di testo per scriverlo
+if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE":
     nuovo_cliente_input = st.text_input("Inserisci Nuova Ragione Sociale Cliente *", key="new_client_name_input")
     cliente = nuovo_cliente_input.strip() if nuovo_cliente_input else ""
+else:
+    cliente = cliente_selezionato_menu
 
-# I campi ora caricano in automatico l'email e il telefono del cliente scelto (ma puoi modificarli a mano se necessario)
-email_cliente = st.text_input("Email Cliente *", value=email_predefinita, key="email_manual_input")
-cellulare_cliente = st.text_input("Numero Cellulare Cliente *", value=cellulare_predefinito, key="cellulare_manual_input")
+# Campi di testo collegati direttamente al caricamento automatico
+email_cliente = st.text_input("Email Cliente *", key="email_manual_input")
+cellulare_cliente = st.text_input("Numero Cellulare Cliente *", key="cellulare_manual_input")
 
 # === CAMPO INSERITO: PROPRIETARIO NUMERO / FIRMATARIO ===
 firmatario_cliente = st.text_input("Nome di chi firma l'SMS (es. Sig. Mario Rossi) *")
