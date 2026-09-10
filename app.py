@@ -318,14 +318,11 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
     
-    # 1. MODIFICATO IL TITOLO: Più grande, Grassetto e Blu scuro coordinato al Brand
-    title_style = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=22)
+    # CAMBIATO MODELLO DI CARATTERE: Impostato 'Helvetica-Bold' per un titolo principale nitido e moderno
+    title_style = ParagraphStyle('T1', fontName='Helvetica-Bold', fontSize=18, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
     
-    # 2. MODIFICATI I TITOLI DI SEZIONE: Font più moderno e rimossi i quadratini di testo
-    section_heading = ParagraphStyle('T2', parent=styles['Heading3'], fontSize=11, textColor=colors.HexColor("#1A365D"), spaceBefore=18, spaceAfter=8)
-    
+    section_heading = ParagraphStyle('T2', fontName='Helvetica-Bold', fontSize=11, textColor=colors.HexColor("#1A365D"), spaceBefore=18, spaceAfter=8)
     body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
-    firma_titolo_style = ParagraphStyle('T_Firma_Tit', parent=styles['Normal'], fontSize=10, leading=16, textColor=colors.HexColor("#1A365D"))
     firma_style = ParagraphStyle('T4', parent=styles['Normal'], fontSize=9, leading=14, textColor=colors.HexColor("#4A5568"))
     
     story = []
@@ -335,22 +332,22 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     
-    # STRUTTURA TABELLA INTESTAZIONE (Invariata, pulita su due colonne)
+    # === STRUTTURA INTELLIGENTE: TITOLI DELLE INTETSTAZIONI IN BLU (#1A365D) E VALORI IN NERO ===
     dati_tabella = [
-        [Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style), 
-         Paragraph(f"<b>Marchio Apparecchio:</b> {marchio}", body_style)],
+        [Paragraph(f"<font color='#1A365D'><b>Data Intervento:</b></font> {data_str}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Marchio Apparecchio:</b></font> {marchio}", body_style)],
          
-        [Paragraph(f"<b>Cliente / Ragione Sociale:</b> {cliente}", body_style), 
-         Paragraph(f"<b>Matricola:</b> {matricola if matricola else 'N.D.'}", body_style)],
+        [Paragraph(f"<font color='#1A365D'><b>Cliente / Ragione Sociale:</b></font> {cliente}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Matricola:</b></font> {matricola if matricola else 'N.D.'}", body_style)],
          
-        [Paragraph(f"<b>Email Cliente:</b> {email_cliente}", body_style), 
-         Paragraph(f"<b>Kilometri Percorsi:</b> {km} Km", body_style)],
+        [Paragraph(f"<font color='#1A365D'><b>Email Cliente:</b></font> {email_cliente}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Kilometri Percorsi:</b></font> {km} Km", body_style)],
          
-        [Paragraph(f"<b>Numero Cellulare:</b> {cellulare_cliente}", body_style), 
-         Paragraph(f"<b>Ore Lavoro Impiegate:</b> {ore_lavoro}", body_style)],
+        [Paragraph(f"<font color='#1A365D'><b>Numero Cellulare:</b></font> {cellulare_cliente}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Ore Lavoro Impiegate:</b></font> {ore_lavoro}", body_style)],
          
-        [Paragraph(f"<b>Firmatario/Collaboratore:</b> {firmatario if firmatario else 'N.D.'}", body_style), 
-         Paragraph(f"<b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Urgente:</b> {urgent}", body_style)]
+        [Paragraph(f"<font color='#1A365D'><b>Firmatario/Collaboratore:</b></font> {firmatario if firmatario else 'N.D.'}", body_style), 
+         Paragraph(f"<font color='#1A365D'><b>Richiede Preventivo:</b></font> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <font color='#1A365D'><b>Urgente:</b></font> {urgent}", body_style)]
     ]
     
     tabella_dati = Table(dati_tabella, colWidths=[265, 265])
@@ -364,7 +361,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(tabella_dati)
     story.append(Spacer(1, 15))
     
-    # SEZIONI INTERVENTO CON CORREZIONI DI SPAZIATURA E STILE
+    # SEZIONI DI TESTO DELL'INTERVENTO
     story.append(Paragraph("<b>GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
     
@@ -375,34 +372,25 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         story.append(Paragraph("<b>NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
         story.append(Paragraph(note_extra, body_style))
         
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 15))
     
-    # 3. NUOVA STRUTTURA DELLE FIRME: AFFIANCATE IN ORIZZONTALE SU DUE COLONNE PERFETTE
-    stringa_maps = f"📍 <u><a href='{link_maps}' color='#2C5282'>■ Verifica posizione GPS su Google Maps</a></u>" if "https" in str(link_maps) else "📍 <i>Posizione GPS: Non disponibile o non autorizzata</i>"
+    # === STRUTTURA DELLE FIRME: RIPRISTINATE IN VERTICALE (UNA SOTTO L'ALTRA) COME ORIGINARIAMENTE ===
+    story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
+    story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
     
-    dati_firme = [
-        [
-            Paragraph("<b>Firma del Tecnico Responsabile:</b>", firma_titolo_style),
-            Paragraph("<b>Firma per Accettazione Cliente:</b>", firma_titolo_style)
-        ],
-        [
-            Paragraph(f"<i>■ Convalidato dal Tecnico: {firma_tecnico} il {data_str}</i><br/>{stringa_maps}", firma_style),
-            Paragraph(f"<i>■ {stringa_firma}</i>", firma_style)
-        ]
-    ]
+    if "https" in str(link_maps):
+        story.append(Paragraph(f"📍 <u><a href='{link_maps}' color='#2C5282'>■ Clicca qui per verificare la posizione GPS del Tecnico su Google Maps</a></u>", firma_style))
+    else:
+        story.append(Paragraph(f"📍 <i>Posizione GPS: Non disponibile o non autorizzata</i>", firma_style))
+        
+    story.append(Spacer(1, 15))
     
-    tabella_firme = Table(dati_firme, colWidths=[265, 265])
-    tabella_firme.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-    ]))
+    story.append(Paragraph("<b>Firma per Accettazione Cliente:</b>", body_style))
+    story.append(Paragraph(f"<i>■ {stringa_firma}</i>", firma_style))
     
-    story.append(tabella_firme)
-    
-    # DOCUMENTAZIONE FOTOGRAFICA
+    # ALLEGATI FOTOGRAFICI IN CODA
     if lista_file_immagini and len(lista_file_immagini) > 0:
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 15))
         story.append(Paragraph("<b>DOCUMENTAZIONE FOTOGRAFICA APPARECCHIO</b>", section_heading))
         for idx, file_img in enumerate(lista_file_immagini[:4]):
             story.append(Spacer(1, 10))
