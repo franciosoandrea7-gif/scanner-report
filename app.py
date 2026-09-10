@@ -315,10 +315,27 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
     
+    # === FUNZIONE INTERNA CHE DISEGNA LO SFONDO SFUMATO DIETRO AI TESTI ===
+    def disegna_sfondo_sfumato(canvas, doc):
+        SFONDO_FILE = "sfondo.png"  # L'immagine che hai caricato su GitHub
+        if os.path.exists(SFONDO_FILE):
+            canvas.saveState()
+            # Impostiamo la trasparenza (0.05 è sfumatissimo, perfetto per non dare fastidio alla lettura)
+            canvas.setFillAlpha(0.05)
+            canvas.setStrokeAlpha(0.05)
+            
+            # Posizioniamo l'immagine al centro del foglio Letter (Larghezza: 612, Altezza: 792)
+            # Dimensioni dello sfondo sul foglio: 380 di larghezza per 380 di altezza
+            canvas.drawImage(SFONDO_FILE, 116, 206, width=380, height=380, mask='auto')
+            canvas.restoreState()
+
+    # Creazione del documento mantenendo i tuoi margini originali
     doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
-    section_heading = ParagraphStyle('T2', parent=styles['Heading3'], fontSize=12, textColor=colors.HexColor("#2C5282"), spaceBefore=14, spaceAfter=6)
+    
+    # Mantengo il tuo carattere Helvetica-Bold per il titolo principale
+    title_style = ParagraphStyle('T1', fontName='Helvetica-Bold', fontSize=18, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
+    section_heading = ParagraphStyle('T2', fontName='Helvetica-Bold', fontSize=11, textColor=colors.HexColor("#1A365D"), spaceBefore=18, spaceAfter=8)
     body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
     firma_style = ParagraphStyle('T4', parent=styles['Normal'], fontSize=9, leading=14, textColor=colors.HexColor("#4A5568"))
     
@@ -329,7 +346,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     
-    # === STRUTTURA DESIGN CON TITOLI IN BLU (#1A365D) E VALORI IN NERO ===
+    # Tabella ordinata bicolore (Titoli in Blu scuro, Risposte in nero)
     dati_tabella = [
         [Paragraph(f"<font color='#1A365D'><b>Data Intervento:</b></font> {data_str}", body_style), 
          Paragraph(f"<font color='#1A365D'><b>Marchio Apparecchio:</b></font> {marchio}", body_style)],
@@ -347,10 +364,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
          Paragraph(f"<font color='#1A365D'><b>Richiede Preventivo:</b></font> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <font color='#1A365D'><b>Urgente:</b></font> {urgent}", body_style)]
     ]
     
-    # Ripartizione esatta della larghezza (530 pixel utili)
     tabella_dati = Table(dati_tabella, colWidths=[265, 265])
-    
-    # Stile tabella con spaziatura ariosa e linee grigie eleganti sotto ogni riga
     tabella_dati.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -361,19 +375,19 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(tabella_dati)
     story.append(Spacer(1, 15))
     
-    story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
+    story.append(Paragraph("<b>GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
     
-    story.append(Paragraph("<b>■ LAVORI ESEGUITI E MATERIALI UTILIZZATI</b>", section_heading))
+    story.append(Paragraph("<b>LAVORI ESEGUITI E MATERIALI UTILIZZATI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     
-    # === SEZIONE NOTE STAMPATA NEL PDF ===
     if note_extra:
-        story.append(Paragraph("<b>■ NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
+        story.append(Paragraph("<b>NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
         story.append(Paragraph(note_extra, body_style))
         
     story.append(Spacer(1, 15))
     
+    # Firme rimesse in verticale (una sotto l'altera) come richiesto
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
     story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
     
@@ -389,7 +403,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     
     if lista_file_immagini and len(lista_file_immagini) > 0:
         story.append(Spacer(1, 15))
-        story.append(Paragraph("<b>■ DOCUMENTAZIONE FOTOGRAFICA APPARECCHIO</b>", section_heading))
+        story.append(Paragraph("<b>DOCUMENTAZIONE FOTOGRAFICA APPARECCHIO</b>", section_heading))
         for idx, file_img in enumerate(lista_file_immagini[:4]):
             story.append(Spacer(1, 10))
             foto_img = Image.open(file_img)
@@ -398,7 +412,8 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
             foto_img.save(temp_path)
             story.append(RLImage(temp_path, width=440, height=280))
             
-    doc.build(story)
+    # === QUI DICIAMO AL PDF DI DISEGNARE LO SFONDO AGGIUNGENDO onFirstPage ===
+    doc.build(story, onFirstPage=disegna_sfondo_sfumato)
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS E NOTE SU EXCEL ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
