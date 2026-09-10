@@ -387,7 +387,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         
     story.append(Spacer(1, 15))
     
-    # Firme rimesse in verticale (una sotto l'altera) come richiesto
+    # Firme rimesse in verticale (una sotto l'altra) come richiesto
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
     story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
     
@@ -454,7 +454,6 @@ def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellular
     else:
         df_nuovo = pd.DataFrame([riga])
         
-    # Ordine sistemato delle colonne inclusa la colonna corretta dei lavori eseguiti e del firmatario
     colonne_ordinate = [
         "Data Intervento", "Tecnico Responsabile", "Ragione Sociale Cliente", 
         "Email Cliente", "Cellulare Cliente", "Firmatario / Proprietario Numero", 
@@ -506,7 +505,6 @@ if st.button("💾 REGISTRA E GENERA REPORT COMPLETO"):
         data_str = data_corrente.strftime("%d/%m/%Y")
         firma_tecnico_str = tecnico_selezionato
         
-        # Stringa firma aggiornata con il nome del collaboratore/proprietario inserito a schermo
         stringa_firma_cli = f"Firmato via SMS OTP da {firmatario_cliente} (Cell: {cellulare_cliente}) il {data_str} (ID-{st.session_state['codice_sms']})"
         
         registra_dati_intervento(data_str, tecnico_selezionato, cliente, email_cliente, cellulare_cliente, firmatario_cliente, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma_cli, gps_final_link)
