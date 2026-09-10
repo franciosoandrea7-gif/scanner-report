@@ -317,7 +317,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     
     # === FUNZIONE INTERNA: SFONDO MOLTO PIÙ GRANDE E CENTRATO ===
     def disegna_sfondo_sfumato(canvas, doc):
-        SFONDO_FILE = "sfondo.png"  
+        SFONDO_FILE = "sfondo.png.jpg"  
         if os.path.exists(SFONDO_FILE):
             canvas.saveState()
             # Trasparenza mantenuta nitida al 15% (0.15)
