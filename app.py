@@ -310,7 +310,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
      
 # --- 4. CREAZIONE PDF CON LINK GOOGLE MAPS E FOTO MULTIPLE ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, note_extra, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
@@ -329,17 +329,36 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
         
     story.append(Paragraph("<b>RAPPORTO DI INTERVENTO TECNICO</b>", title_style))
     
-    # Sistemato {urgent} per combaciare con il parametro della funzione e aggiunto il firmatario
-    dati_strutturati = f"""
-    <b>Data Intervento:</b> {data_str}<br/>
-    <b>Cliente / Ragione Sociale:</b> {cliente}<br/>
-    <b>Email Cliente:</b> {email_cliente}<br/>
-    <b>Numero Cellulare:</b> {cellulare_cliente} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Firmatario/Collaboratore:</b> {firmatario if firmatario else 'N.D.'}<br/>
-    <b>Marchio Apparecchio:</b> {marchio} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Matricola:</b> {matricola if matricola else 'N.D.'}<br/>
-    <b>Kilometri Percorsi:</b> {km} Km &nbsp;&nbsp;|&nbsp;&nbsp; <b>Ore Lavoro Impiegate:</b> {ore_lavoro}<br/>
-    <b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Intervento Urgente:</b> {urgent}
-    """
-    story.append(Paragraph(dati_strutturati, body_style))
+    # === STRUTTURA DESIGN: TABELLA NITIDA SU DUE COLONNE PERFETTAMENTE INCOLONNATE ===
+    dati_tabella = [
+        [Paragraph(f"<b>Data Intervento:</b> {data_str}", body_style), 
+         Paragraph(f"<b>Marchio Apparecchio:</b> {marchio}", body_style)],
+         
+        [Paragraph(f"<b>Cliente / Ragione Sociale:</b> {cliente}", body_style), 
+         Paragraph(f"<b>Matricola:</b> {matricola if matricola else 'N.D.'}", body_style)],
+         
+        [Paragraph(f"<b>Email Cliente:</b> {email_cliente}", body_style), 
+         Paragraph(f"<b>Kilometri Percorsi:</b> {km} Km", body_style)],
+         
+        [Paragraph(f"<b>Numero Cellulare:</b> {cellulare_cliente}", body_style), 
+         Paragraph(f"<b>Ore Lavoro Impiegate:</b> {ore_lavoro}", body_style)],
+         
+        [Paragraph(f"<b>Firmatario/Collaboratore:</b> {firmatario if firmatario else 'N.D.'}", body_style), 
+         Paragraph(f"<b>Richiede Preventivo:</b> {preventivo} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Urgente:</b> {urgent}", body_style)]
+    ]
+    
+    # Ripartizione esatta della larghezza (530 totali utili stampabili sul foglio letter)
+    tabella_dati = Table(dati_tabella, colWidths=[265, 265])
+    
+    # Stile della tabella: linee di design grigie orizzontali sottili ed eleganti
+    tabella_dati.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")), # Linee di design pulite
+    ]))
+    
+    story.append(tabella_dati)
     story.append(Spacer(1, 15))
     
     story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
@@ -380,7 +399,6 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
             story.append(RLImage(temp_path, width=440, height=280))
             
     doc.build(story)
-
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS E NOTE SU EXCEL ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
