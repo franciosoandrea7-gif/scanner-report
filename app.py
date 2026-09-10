@@ -99,7 +99,7 @@ if pin_tecnico:
         st.success(f"✍️ ID Tecnico Verificato: {tecnico_selezionato}")
     else:
         st.error("❌ PIN errato!")
-
+        
 # --- 1. MODULO DATI CLIENTE ---
 st.subheader("👤 Dati Intervento")
 data_corrente = st.date_input("Data Intervento", datetime.now())
@@ -112,7 +112,35 @@ if cliente_selezionato_menu == "➕ AGGIUNGI NUOVO CLIENTE":
 else:
     cliente = cliente_selezionato_menu
 
-email_cliente = st.text_input("Email Cliente *")
+# === RECUPERO DINAMICO DI TUTTE LE EMAIL STORICHE DA EXCEL ===
+lista_email_storiche = []
+if os.path.exists(EXCEL_FILE):
+    try:
+        wb = load_workbook(EXCEL_FILE, read_only=True)
+        fogli_presenti = wb.sheetnames
+        wb.close()
+        for foglio in fogli_presenti:
+            if foglio != "Sheet1":
+                df_f = pd.read_excel(EXCEL_FILE, sheet_name=foglio)
+                if "Email Cliente" in df_f.columns:
+                    # Estraiamo le email valide ed eliminiamo gli spazi bianchi
+                    email_valide = df_f["Email Cliente"].dropna().astype(str).str.strip().tolist()
+                    lista_email_storiche.extend(email_valide)
+    except Exception:
+        pass
+
+# Eliminiamo i doppioni mantenendo l'elenco pulito e ordinato
+lista_email_storiche = sorted(list(set([e for e in lista_email_storiche if e and e.lower() != "n.d."])))
+opzioni_menu_email = ["✍️ SCRIVI EMAIL A MANO / SELEZIONA..."] + lista_email_storiche
+
+# === NUOVO MENU A TENDINA E CAMPO DI TESTO ACCOPPIATI PER LE EMAIL ===
+email_selezionata_menu = st.selectbox("Seleziona un'Email dall'archivio storico:", opzioni_menu_email, key="email_history_select")
+
+if email_selezionata_menu == "✍️ SCRIVI EMAIL A MANO / SELEZIONA...":
+    email_cliente = st.text_input("Email Cliente *", value="", key="email_manual_input")
+else:
+    email_cliente = st.text_input("Email Cliente *", value=email_selezionata_menu, key="email_manual_input")
+
 cellulare_cliente = st.text_input("Numero Cellulare Cliente *")
 
 # === CAMPO INSERITO: PROPRIETARIO NUMERO / FIRMATARIO ===
@@ -142,7 +170,6 @@ else:
     st.info("ℹ️ Consenti l'accesso alla geolocalizzazione se richiesto dal telefono per tracciare la firma d'intervento.")
 
 file_immagini_caricate = st.file_uploader("📸 Carica o Scatta Foto dell'Intervento (Massimo 4 foto)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-
 
 # --- 2. GESTIONE SMS ---
 st.subheader("🔒 Firma Digitale SMS Cliente")
