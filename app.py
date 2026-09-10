@@ -307,7 +307,7 @@ def invia_email_pdf(destinatario, allegato_path, nome_cliente):
         st.success("✉️ Documenti inviati! Email grafica con PDF inviata al cliente, PDF + Excel Storico inviati a franciosoandrea@me.com")
     except Exception as e:
         st.warning(f"⚠️ Nota: File registrati, ma l'invio email ha riscontrato un problema: {e}")
-     
+    
 # --- 4. CREAZIONE PDF CON LINK GOOGLE MAPS E FOTO MULTIPLE ---
 def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, km, ore_lavoro, preventivo, urgent, guasto_segnalato, descrizione_lavori, note_extra, lista_file_immagini, stringa_firma, firma_tecnico, link_maps):
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
@@ -315,25 +315,22 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
     
-    # === FUNZIONE INTERNA CHE DISEGNA LO SFONDO SFUMATO DIETRO AI TESTI ===
+    # === FUNZIONE INTERNA: SFONDO MOLTO PIÙ GRANDE E CENTRATO ===
     def disegna_sfondo_sfumato(canvas, doc):
-        SFONDO_FILE = "sfondo.png.jpg"  # L'immagine che hai caricato su GitHub
+        SFONDO_FILE = "sfondo.png"  
         if os.path.exists(SFONDO_FILE):
             canvas.saveState()
-            # Impostiamo la trasparenza (0.05 è sfumatissimo, perfetto per non dare fastidio alla lettura)
-            canvas.setFillAlpha(0.05)
-            canvas.setStrokeAlpha(0.05)
+            # Trasparenza mantenuta nitida al 15% (0.15)
+            canvas.setFillAlpha(0.15)
+            canvas.setStrokeAlpha(0.15)
             
-            # Posizioniamo l'immagine al centro del foglio Letter (Larghezza: 612, Altezza: 792)
-            # Dimensioni dello sfondo sul foglio: 380 di larghezza per 380 di altezza
-            canvas.drawImage(SFONDO_FILE, 116, 206, width=380, height=380, mask='auto')
+            # Immagine ingrandita a 480x480 pixel e centrata sul foglio Letter
+            canvas.drawImage(SFONDO_FILE, 66, 156, width=480, height=480, mask='auto')
             canvas.restoreState()
 
-    # Creazione del documento mantenendo i tuoi margini originali
     doc = SimpleDocTemplate(pdf_filename, pagesize=letter, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
     
-    # Mantengo il tuo carattere Helvetica-Bold per il titolo principale
     title_style = ParagraphStyle('T1', fontName='Helvetica-Bold', fontSize=18, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=20)
     section_heading = ParagraphStyle('T2', fontName='Helvetica-Bold', fontSize=11, textColor=colors.HexColor("#1A365D"), spaceBefore=18, spaceAfter=8)
     body_style = ParagraphStyle('T3', parent=styles['Normal'], fontSize=10, leading=16)
@@ -375,19 +372,19 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     story.append(tabella_dati)
     story.append(Spacer(1, 15))
     
-    story.append(Paragraph("<b>GUASTO SEGNALATO</b>", section_heading))
+    # === REINSERITI I QUADRATINI BLU IN GRASSETTO COME RICHIESTO ===
+    story.append(Paragraph("<b>■ GUASTO SEGNALATO</b>", section_heading))
     story.append(Paragraph(guasto_segnalato if guasto_segnalato else "N.D.", body_style))
     
-    story.append(Paragraph("<b>LAVORI ESEGUITI E MATERIALI UTILIZZATI</b>", section_heading))
+    story.append(Paragraph("<b>■ LAVORI ESEGUITI E MATERIALI UTILIZZATI</b>", section_heading))
     story.append(Paragraph(descrizione_lavori, body_style))
     
     if note_extra:
-        story.append(Paragraph("<b>NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
+        story.append(Paragraph("<b>■ NOTE EXTRA / RACCOMANDAZIONI</b>", section_heading))
         story.append(Paragraph(note_extra, body_style))
         
     story.append(Spacer(1, 15))
     
-    # Firme rimesse in verticale (una sotto l'altra) come richiesto
     story.append(Paragraph("<b>Firma del Tecnico Responsabile:</b>", body_style))
     story.append(Paragraph(f"<i>■ Convalidato e Firmato dal Tecnico: {firma_tecnico} il {data_str}</i>", firma_style))
     
@@ -403,7 +400,7 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
     
     if lista_file_immagini and len(lista_file_immagini) > 0:
         story.append(Spacer(1, 15))
-        story.append(Paragraph("<b>DOCUMENTAZIONE FOTOGRAFICA APPARECCHIO</b>", section_heading))
+        story.append(Paragraph("<b>■ DOCUMENTAZIONE FOTOGRAFICA APPARECCHIO</b>", section_heading))
         for idx, file_img in enumerate(lista_file_immagini[:4]):
             story.append(Spacer(1, 10))
             foto_img = Image.open(file_img)
@@ -412,8 +409,8 @@ def elabora_pdf(pdf_filename, data_str, cliente, email_cliente, cellulare_client
             foto_img.save(temp_path)
             story.append(RLImage(temp_path, width=440, height=280))
             
-    # === QUI DICIAMO AL PDF DI DISEGNARE LO SFONDO AGGIUNGENDO onFirstPage ===
     doc.build(story, onFirstPage=disegna_sfondo_sfumato)
+
 
 # --- 5. FUNZIONE GENERALE DI SCRITTURA DATI CON LINK GOOGLE MAPS E NOTE SU EXCEL ---
 def registra_dati_intervento(data_str, tecnico, cliente, email_cliente, cellulare_cliente, firmatario, marchio, matricola, guasto_segnalato, descrizione_lavori, note_extra, km, ore_lavoro, preventivo, urgente, stringa_firma, link_maps):
